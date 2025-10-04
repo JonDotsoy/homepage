@@ -1,0 +1,95 @@
+<span class="inline-block relative w-14 h-14">
+  <!-- Símbolo -->
+  <span
+    id="symbol"
+    class="block bg-accent aspect-square w-14 h-14 rotate-12 hover:rotate-45 hover:scale-110 transition-all duration-1000 ease-in-out animate-wiggle"
+  ></span>
+
+  <!-- Corazón SVG -->
+  <svg
+    id="heart"
+    class="absolute inset-0 w-14 h-14 opacity-0"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+    ></path>
+  </svg>
+</span>
+
+<script>
+  const symbol = document.getElementById("symbol");
+  const heart = document.getElementById("heart");
+
+  function showHeart() {
+    // Ocultar símbolo
+    symbol?.classList.add("opacity-0", "scale-0");
+    symbol?.classList.remove("opacity-100", "scale-100");
+
+    // Mostrar corazón con animación de salto
+    heart?.classList.remove("opacity-0");
+    heart?.classList.add("opacity-100", "animate-bounce-heart");
+
+    // Después de 1 segundo, volver al símbolo
+    setTimeout(() => {
+      heart?.classList.remove("animate-bounce-heart");
+      heart?.classList.add("opacity-0");
+      heart?.classList.remove("opacity-100");
+
+      symbol?.classList.remove("opacity-0", "scale-0");
+      symbol?.classList.add("opacity-100", "scale-100");
+    }, 1000);
+  }
+
+  // Alternar cada 5 segundos
+  setInterval(showHeart, 5000);
+</script>
+
+<style>
+  @keyframes wiggle {
+    0%,
+    100% {
+      transform: rotate(12deg);
+    }
+    50% {
+      transform: rotate(24deg);
+    }
+  }
+
+  .animate-wiggle {
+    animation: wiggle 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce-heart {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    25% {
+      transform: translateY(-20px) scale(1.1);
+    }
+    50% {
+      transform: translateY(0) scale(1);
+    }
+    75% {
+      transform: translateY(-10px) scale(1.05);
+    }
+  }
+
+  .animate-bounce-heart {
+    animation: bounce-heart 1s ease-in-out;
+  }
+
+  #symbol {
+    transition:
+      opacity 0.3s ease-in-out,
+      transform 0.3s ease-in-out;
+  }
+
+  #heart {
+    color: var(--accent);
+    transition: opacity 0.3s ease-in-out;
+  }
+</style>

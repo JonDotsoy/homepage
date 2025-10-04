@@ -1,0 +1,30 @@
+{
+  "personal": {
+    "name": "Jonathan Delgado Zamorano",
+    "email": "hi@jon.soy",
+    "nationality": "Chilena",
+    "linkedin": "https://linkedin.com/in/jonadelgado"
+  },
+  "professional": {
+    "title": "Desarrollador de Software",
+    "specializations": [
+      "Desarrollo Backend",
+      "Implementación y Infraestructura",
+      "Desarrollo de Migraciones"
+    ]
+  },
+  "languages": {
+    "native": "Español",
+    "additional": [
+      {
+        "language": "Inglés",
+        "level": "Intermedio Comunicacional"
+      }
+    ]
+  },
+  "seo": {
+    "title": "Jonathan Delgado Zamorano - Desarrollador de Software",
+    "description": "Desarrollador de Software especializado en Desarrollo Backend, Implementación y Infraestructura, y Desarrollo de Migraciones.",
+    "keywords": "desarrollador backend, infraestructura, migraciones, software, chile"
+  }
+}
