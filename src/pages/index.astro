@@ -2,7 +2,7 @@
 import AccentActive from "@/components/accent/accent-active.astro";
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import { Button } from "@/components/ui/button";
-import { IconBrandLinkedin } from "@tabler/icons-react";
+import { IconBrandLinkedin, IconBrandGithub } from "@tabler/icons-react";
 import data from "@/data/general.json";
 ---
 
@@ -27,21 +27,37 @@ import data from "@/data/general.json";
         Estas <AccentActive /> en la web de<br />Jonathan
       </h1>
 
-      <!-- Botón de contacto -->
-      <a
-        href={data.personal.linkedin}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button
-          client:load
-          variant={"outline"}
-          className="cursor-pointer h-13 text-md rounded-full"
+      <!-- Botones de contacto -->
+      <div class="flex flex-col sm:flex-row gap-4">
+        <a
+          href={data.personal.linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          <IconBrandLinkedin className="size-7 opacity-80" />
-          Contáctame ahora
-        </Button>
-      </a>
+          <Button
+            client:load
+            variant={"outline"}
+            className="cursor-pointer h-13 text-md rounded-full"
+          >
+            <IconBrandLinkedin className="size-7 opacity-80" />
+            Contáctame ahora
+          </Button>
+        </a>
+        <a
+          href={data.personal.github}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            client:load
+            variant={"outline"}
+            className="cursor-pointer h-13 text-md rounded-full"
+          >
+            <IconBrandGithub className="size-7 opacity-80" />
+            Ver mi código
+          </Button>
+        </a>
+      </div>
 
       <!-- Barra animada -->
       <div
