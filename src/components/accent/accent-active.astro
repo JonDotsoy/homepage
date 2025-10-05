@@ -1,9 +1,27 @@
 <span class="inline-block relative w-14 h-14">
-  <!-- Símbolo -->
+  <!-- Símbolo cuadrado -->
   <span
     id="symbol"
     class="block bg-accent aspect-square w-14 h-14 rotate-12 hover:rotate-45 hover:scale-110 transition-all duration-1000 ease-in-out animate-wiggle"
   ></span>
+
+  <!-- Branches SVG (código) -->
+  <svg
+    id="branches"
+    class="absolute inset-0 w-14 h-14 opacity-0 p-2"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <line x1="6" y1="3" x2="6" y2="15"></line>
+    <circle cx="18" cy="6" r="3"></circle>
+    <circle cx="6" cy="18" r="3"></circle>
+    <path d="M18 9a9 9 0 0 1-9 9"></path>
+  </svg>
 
   <!-- Corazón SVG -->
   <svg
@@ -21,30 +39,86 @@
 
 <script>
   const symbol = document.getElementById("symbol");
+  const branches = document.getElementById("branches");
   const heart = document.getElementById("heart");
 
-  function showHeart() {
-    // Ocultar símbolo
-    symbol?.classList.add("opacity-0", "scale-0");
-    symbol?.classList.remove("opacity-100", "scale-100");
+  // Función helper para esperar
+  const wait = (segundos) =>
+    new Promise((resolve) => setTimeout(resolve, segundos * 1000));
 
-    // Mostrar corazón con animación de salto
-    heart?.classList.remove("opacity-0");
-    heart?.classList.add("opacity-100", "animate-bounce-heart");
+  // Definir escenas con start, end y duración
+  const escenas = [
+    {
+      duracion: 1,
+      start: () => {
+        // Ocultar símbolo
+        symbol?.classList.add("opacity-0", "scale-0");
+        symbol?.classList.remove("opacity-100", "scale-100");
 
-    // Después de 1 segundo, volver al símbolo
-    setTimeout(() => {
-      heart?.classList.remove("animate-bounce-heart");
-      heart?.classList.add("opacity-0");
-      heart?.classList.remove("opacity-100");
+        // Mostrar branches
+        branches?.classList.remove("opacity-0");
+        branches?.classList.add("opacity-100", "animate-spin-slow");
+      },
+      end: () => {
+        // Ocultar branches
+        branches?.classList.remove("animate-spin-slow");
+        branches?.classList.add("opacity-0");
+        branches?.classList.remove("opacity-100");
 
-      symbol?.classList.remove("opacity-0", "scale-0");
-      symbol?.classList.add("opacity-100", "scale-100");
-    }, 1000);
+        // Mostrar símbolo
+        symbol?.classList.remove("opacity-0", "scale-0");
+        symbol?.classList.add("opacity-100", "scale-100");
+      },
+    },
+    {
+      duracion: 1,
+      start: () => {
+        // Ocultar símbolo
+        symbol?.classList.add("opacity-0", "scale-0");
+        symbol?.classList.remove("opacity-100", "scale-100");
+
+        // Mostrar corazón
+        heart?.classList.remove("opacity-0");
+        heart?.classList.add("opacity-100", "animate-bounce-heart");
+      },
+      end: () => {
+        // Ocultar corazón
+        heart?.classList.remove("animate-bounce-heart");
+        heart?.classList.add("opacity-0");
+        heart?.classList.remove("opacity-100");
+
+        // Mostrar símbolo
+        symbol?.classList.remove("opacity-0", "scale-0");
+        symbol?.classList.add("opacity-100", "scale-100");
+      },
+    },
+  ];
+
+  // Función principal con ciclo while infinito
+  async function iniciarAnimaciones() {
+    // Esperar 5 segundos antes de empezar
+    await wait(5);
+
+    while (true) {
+      // Iterar sobre cada escena
+      for (const escena of escenas) {
+        // Iniciar la escena
+        escena.start();
+
+        // Esperar la duración de la escena
+        await wait(escena.duracion);
+
+        // Terminar la escena
+        escena.end();
+
+        // Esperar 5 segundos antes de la siguiente escena
+        await wait(5);
+      }
+    }
   }
 
-  // Alternar cada 5 segundos
-  setInterval(showHeart, 5000);
+  // Iniciar el ciclo
+  iniciarAnimaciones();
 </script>
 
 <style>
@@ -60,6 +134,22 @@
 
   .animate-wiggle {
     animation: wiggle 2s ease-in-out infinite;
+  }
+
+  @keyframes spin-slow {
+    0% {
+      transform: rotate(0deg) scale(1);
+    }
+    50% {
+      transform: rotate(180deg) scale(1.1);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 1s ease-in-out;
   }
 
   @keyframes bounce-heart {
@@ -88,6 +178,7 @@
       transform 0.3s ease-in-out;
   }
 
+  #branches,
   #heart {
     color: var(--accent);
     transition: opacity 0.3s ease-in-out;
