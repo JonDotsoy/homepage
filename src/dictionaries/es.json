@@ -6,5 +6,17 @@
       "contact": "Contáctame ahora",
       "github": "Ve mi código"
     }
+  },
+  "about": {
+    "title": "Sobre mí",
+    "content": [
+      "Soy un desarrollador de plataformas web backend con más de 8 años de experiencia. He trabajado principalmente en productos digitales para grandes empresas, donde he enfrentado desafíos complejos y escalables.",
+      "Mi stack principal incluye TypeScript y Node.js, aunque también tengo experiencia con Java, Spring Boot y Spring Batch. Me apasiona crear soluciones robustas y eficientes que realmente marquen la diferencia.",
+      "En mis tiempos libres, colaboro activamente con la comunidad de JavaScript Chile (ChileJS), donde comparto conocimientos y aprendo de otros desarrolladores apasionados por la tecnología."
+    ]
+  },
+  "footer": {
+    "contact": "Enviar email",
+    "rights": "Todos los derechos reservados"
   }
 }
