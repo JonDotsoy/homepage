@@ -10,9 +10,10 @@
   "about": {
     "title": "Sobre mí",
     "content": [
-      "Soy un desarrollador de plataformas web backend con más de 8 años de experiencia. He trabajado principalmente en productos digitales para grandes empresas, donde he enfrentado desafíos complejos y escalables.",
-      "Mi stack principal incluye TypeScript y Node.js, aunque también tengo experiencia con Java, Spring Boot y Spring Batch. Me apasiona crear soluciones robustas y eficientes que realmente marquen la diferencia.",
-      "En mis tiempos libres, colaboro activamente con la comunidad de JavaScript Chile (ChileJS), donde comparto conocimientos y aprendo de otros desarrolladores apasionados por la tecnología."
+      "Jona es un desarrollador de software especializado en aplicaciones web, con un enfoque sólido en backend y experiencia en el sector fintech. Combina una mentalidad técnica rigurosa con visión estratégica, priorizando la calidad del código, la escalabilidad de las soluciones y la entrega de resultados tangibles.",
+      "Su trabajo se apoya en metodologías como TDD y en el uso de herramientas de inteligencia artificial para optimizar procesos y flujos de desarrollo. Domina tecnologías modernas como .NET, TypeScript, React, Astro, Tailwind, y herramientas de infraestructura como Docker, Terraform, Google Cloud Platform y Cloudflare Workers.",
+      "Su día a día gira en torno a la automatización, la mejora continua y la colaboración efectiva en equipos técnicos que valoran la innovación y las buenas prácticas. Además de su labor técnica, Jona disfruta mentorar y asesorar a startups y pequeñas empresas, ayudándolas a estructurar estrategias tecnológicas y potenciar sus equipos.",
+      "Con un nivel intermedio de inglés y una comunicación clara y asertiva, aporta una combinación equilibrada entre conocimiento técnico, liderazgo humano y orientación a resultados."
     ]
   },
   "footer": {
