@@ -1,0 +1,25 @@
+---
+import dict from "@/dictionaries/es.json";
+---
+
+<section class="min-h-screen flex items-center justify-center py-20">
+  <div class="max-w-4xl mx-auto px-4">
+    <!-- Título de la sección -->
+    <h2
+      class="text-5xl md:text-6xl lg:text-7xl text-stone-800 font-semibold mb-12 text-center"
+    >
+      {dict.about.title}
+    </h2>
+
+    <!-- Contenido -->
+    <div class="space-y-6">
+      {
+        dict.about.content.map((paragraph) => (
+          <p class="text-xl md:text-2xl text-stone-700 leading-relaxed text-center">
+            {paragraph}
+          </p>
+        ))
+      }
+    </div>
+  </div>
+</section>
