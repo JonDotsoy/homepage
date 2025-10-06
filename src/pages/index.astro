@@ -2,6 +2,8 @@
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import data from "@/data/general.json";
 import HelloHero from "@/sections/hello-hero.astro";
+import AboutMe from "@/sections/about-me.astro";
+import Footer from "@/sections/footer.astro";
 ---
 
 <DefaultLayout
@@ -10,4 +12,6 @@ import HelloHero from "@/sections/hello-hero.astro";
   keywords={data.seo.keywords}
 >
   <HelloHero />
+  <AboutMe />
+  <Footer />
 </DefaultLayout>
