@@ -21,6 +21,7 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "0.544.0",
+    "motion": "12.23.22",
     "prettier": "3.6.2",
     "prettier-plugin-astro": "0.14.1",
     "react": "^19.2.0",
