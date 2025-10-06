@@ -4,6 +4,7 @@ import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import { Button } from "@/components/ui/button";
 import { IconBrandLinkedin, IconBrandGithub } from "@tabler/icons-react";
 import data from "@/data/general.json";
+import dict from "@/dictionaries/es.json";
 ---
 
 <DefaultLayout
@@ -17,14 +18,20 @@ import data from "@/data/general.json";
       <p
         class="text-xl lg:text-2xl md:text-base text-stone-700 text-center max-w-2xl"
       >
-        El mundo digital es infinito y este es una web más
+        {dict.home.subtitle}
       </p>
 
       <!-- Título principal -->
       <h1
         class="text-6xl md:text-8xl lg:text-8xl text-stone-800 text-center font-semibold"
       >
-        Estas <AccentActive /> en la web de<br />Jonathan
+        {
+          dict.home.title.map((e) => {
+            if (e === "{accent}") return <AccentActive />;
+            if (e === "{br}") return <br />;
+            return e;
+          })
+        }
       </h1>
 
       <!-- Botones de contacto -->
@@ -40,7 +47,7 @@ import data from "@/data/general.json";
             className="cursor-pointer h-13 text-md rounded-full"
           >
             <IconBrandLinkedin className="size-7 opacity-80" />
-            Contáctame ahora
+            {dict.home.buttons.contact}
           </Button>
         </a>
         <a
@@ -54,7 +61,7 @@ import data from "@/data/general.json";
             className="cursor-pointer h-13 text-md rounded-full"
           >
             <IconBrandGithub className="size-7 opacity-80" />
-            Ve mi código
+            {dict.home.buttons.github}
           </Button>
         </a>
       </div>

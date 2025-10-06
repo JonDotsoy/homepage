@@ -38,87 +38,60 @@
 </span>
 
 <script>
+  import { Scene, Stage } from "@/lib/stage";
+
   const symbol = document.getElementById("symbol");
   const branches = document.getElementById("branches");
   const heart = document.getElementById("heart");
 
-  // Función helper para esperar
-  const wait = (segundos) =>
-    new Promise((resolve) => setTimeout(resolve, segundos * 1000));
-
-  // Definir escenas con start, end y duración
-  const escenas = [
-    {
-      duracion: 1,
-      start: () => {
-        // Ocultar símbolo
-        symbol?.classList.add("opacity-0", "scale-0");
-        symbol?.classList.remove("opacity-100", "scale-100");
-
-        // Mostrar branches
-        branches?.classList.remove("opacity-0");
-        branches?.classList.add("opacity-100", "animate-spin-slow");
-      },
-      end: () => {
-        // Ocultar branches
-        branches?.classList.remove("animate-spin-slow");
-        branches?.classList.add("opacity-0");
-        branches?.classList.remove("opacity-100");
-
-        // Mostrar símbolo
-        symbol?.classList.remove("opacity-0", "scale-0");
-        symbol?.classList.add("opacity-100", "scale-100");
-      },
+  // Escena del símbolo: mostrar símbolo por 5 segundos (reutilizable)
+  const symbolScene = new Scene({
+    duration: 5000,
+    start() {
+      // Mostrar símbolo
+      symbol?.classList.remove("opacity-0", "scale-0");
+      symbol?.classList.add("opacity-100", "scale-100");
     },
-    {
-      duracion: 1,
-      start: () => {
-        // Ocultar símbolo
-        symbol?.classList.add("opacity-0", "scale-0");
-        symbol?.classList.remove("opacity-100", "scale-100");
-
-        // Mostrar corazón
-        heart?.classList.remove("opacity-0");
-        heart?.classList.add("opacity-100", "animate-bounce-heart");
-      },
-      end: () => {
-        // Ocultar corazón
-        heart?.classList.remove("animate-bounce-heart");
-        heart?.classList.add("opacity-0");
-        heart?.classList.remove("opacity-100");
-
-        // Mostrar símbolo
-        symbol?.classList.remove("opacity-0", "scale-0");
-        symbol?.classList.add("opacity-100", "scale-100");
-      },
+    stop() {
+      // Ocultar símbolo
+      symbol?.classList.add("opacity-0", "scale-0");
+      symbol?.classList.remove("opacity-100", "scale-100");
     },
-  ];
+  });
 
-  // Función principal con ciclo while infinito
-  async function iniciarAnimaciones() {
-    // Esperar 5 segundos antes de empezar
-    await wait(5);
+  // Escena de branches: mostrar branches por 1 segundo
+  const branchScene = new Scene({
+    duration: 1000,
+    start() {
+      // Mostrar branches
+      branches?.classList.remove("opacity-0");
+      branches?.classList.add("opacity-100", "animate-spin-slow");
+    },
+    stop() {
+      // Ocultar branches
+      branches?.classList.remove("animate-spin-slow", "opacity-100");
+      branches?.classList.add("opacity-0");
+    },
+  });
 
-    while (true) {
-      // Iterar sobre cada escena
-      for (const escena of escenas) {
-        // Iniciar la escena
-        escena.start();
+  // Escena de corazón: mostrar corazón por 1 segundo
+  const heartScene = new Scene({
+    duration: 1000,
+    start() {
+      // Mostrar corazón
+      heart?.classList.remove("opacity-0");
+      heart?.classList.add("opacity-100", "animate-bounce-heart");
+    },
+    stop() {
+      // Ocultar corazón
+      heart?.classList.remove("animate-bounce-heart", "opacity-100");
+      heart?.classList.add("opacity-0");
+    },
+  });
 
-        // Esperar la duración de la escena
-        await wait(escena.duracion);
-
-        // Terminar la escena
-        escena.end();
-
-        // Esperar 5 segundos antes de la siguiente escena
-        await wait(5);
-      }
-    }
-  }
-
-  // Iniciar el ciclo
-  iniciarAnimaciones();
+  // Crear el stage con las escenas en secuencia
+  // Reutilizamos symbolScene entre las animaciones
+  new Stage([symbolScene, branchScene, symbolScene, heartScene]);
 </script>
 
 <style>

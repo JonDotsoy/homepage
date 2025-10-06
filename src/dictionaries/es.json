@@ -1,0 +1,10 @@
+{
+  "home": {
+    "subtitle": "El mundo digital es infinito y este es una web más",
+    "title": ["Estas ", "{accent}", " en la web de", "{br}", "Jonathan"],
+    "buttons": {
+      "contact": "Contáctame ahora",
+      "github": "Ve mi código"
+    }
+  }
+}
