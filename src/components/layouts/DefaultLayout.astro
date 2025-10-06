@@ -5,13 +5,14 @@ interface Props {
   title?: string;
   description?: string;
   keywords?: string;
+  lang?: string;
 }
 
-const { title = "Astro", description, keywords } = Astro.props;
+const { title = "Astro", description, keywords, lang } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

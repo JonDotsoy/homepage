@@ -1,0 +1,22 @@
+{
+  "home": {
+    "subtitle": "The digital world is infinite and this is just another website",
+    "title": ["You are ", "{accent}", " on", "{br}", "Jonathan's website"],
+    "buttons": {
+      "contact": "Contact me now",
+      "github": "See my code"
+    }
+  },
+  "about": {
+    "title": "About me",
+    "content": [
+      "I'm a backend web platform developer with over 8 years of experience. I've worked primarily on digital products for large companies, where I've faced complex and scalable challenges.",
+      "My main stack includes TypeScript and Node.js, although I also have experience with Java, Spring Boot, and Spring Batch. I'm passionate about creating robust and efficient solutions that truly make a difference.",
+      "In my free time, I actively collaborate with the JavaScript Chile community (ChileJS), where I share knowledge and learn from other developers passionate about technology."
+    ]
+  },
+  "footer": {
+    "contact": "Send email",
+    "rights": "All rights reserved"
+  }
+}

@@ -4,8 +4,15 @@ import {
   IconBrandLinkedin,
   IconMail,
 } from "@tabler/icons-react";
-import dict from "@/dictionaries/es.json";
 import data from "@/data/general.json";
+import { dictionary } from "@/dictionaries";
+
+interface Props {
+  lang?: "es" | "en";
+}
+
+const { lang = "es" } = Astro.props;
+const dict = dictionary(lang);
 
 const currentYear = new Date().getFullYear();
 ---
