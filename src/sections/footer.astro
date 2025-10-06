@@ -1,0 +1,58 @@
+---
+import {
+  IconBrandGithub,
+  IconBrandLinkedin,
+  IconMail,
+} from "@tabler/icons-react";
+import dict from "@/dictionaries/es.json";
+import data from "@/data/general.json";
+
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="w-full border-t border-stone-200">
+  <div class="container mx-auto px-4 py-8">
+    <div
+      class="flex flex-col items-center justify-center gap-6 md:flex-row md:justify-between"
+    >
+      <!-- Social Links -->
+      <div class="flex items-center gap-3">
+        <a
+          href={data.personal.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label="GitHub"
+        >
+          <IconBrandGithub className="h-4 w-4" />
+          <span class="font-medium">GitHub</span>
+        </a>
+
+        <a
+          href={data.personal.linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label="LinkedIn"
+        >
+          <IconBrandLinkedin className="h-4 w-4" />
+          <span class="font-medium">LinkedIn</span>
+        </a>
+
+        <a
+          href={`mailto:${data.personal.email}`}
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label={dict.footer.contact}
+        >
+          <IconMail className="h-4 w-4" />
+          <span class="font-medium">{dict.footer.contact}</span>
+        </a>
+      </div>
+
+      <!-- Copyright -->
+      <div class="text-center text-sm text-stone-600 md:text-right">
+        <p>© {currentYear} Jonathan Delgado. {dict.footer.rights}.</p>
+      </div>
+    </div>
+  </div>
+</footer>
