@@ -1,0 +1,276 @@
+---
+title: "Guía Completa de Desarrollo Backend con Node.js"
+description: "Una exploración profunda de las mejores prácticas y patrones de diseño en desarrollo backend moderno"
+author: "Jonathan Delgado Zamorano"
+date: "2025-10-07"
+tags: ["backend", "nodejs", "arquitectura", "desarrollo"]
+---
+
+# Guía Completa de Desarrollo Backend con Node.js
+
+El desarrollo backend moderno requiere un entendimiento profundo de arquitecturas escalables, patrones de diseño y mejores prácticas. En este artículo, exploraremos los conceptos fundamentales que todo desarrollador backend debe dominar.
+
+## Introducción
+
+El ecosistema de Node.js ha evolucionado significativamente en los últimos años. Desde la introducción de **ES Modules** hasta las mejoras en el rendimiento del runtime, las posibilidades son infinitas.
+
+### ¿Por qué Node.js?
+
+Node.js ofrece varias ventajas clave:
+
+- **Alto rendimiento** gracias a su arquitectura event-driven
+- **Ecosistema rico** con millones de paquetes en npm
+- **JavaScript en todas partes** - mismo lenguaje en frontend y backend
+- **Comunidad activa** y en constante crecimiento
+
+## Arquitectura de Aplicaciones
+
+### Patrón MVC (Model-View-Controller)
+
+El patrón MVC es fundamental para organizar código de manera mantenible:
+
+1. **Model**: Representa la lógica de datos y negocio
+2. **View**: Maneja la presentación de datos
+3. **Controller**: Coordina entre Model y View
+
+### Arquitectura en Capas
+
+Una arquitectura bien diseñada típicamente incluye:
+
+- Capa de presentación (API)
+- Capa de lógica de negocio
+- Capa de acceso a datos
+- Capa de infraestructura
+
+## Ejemplo de Código: API REST
+
+Aquí hay un ejemplo de un servidor Express básico con TypeScript:
+
+```typescript
+import express, { Request, Response } from "express";
+import { z } from "zod";
+
+const app = express();
+app.use(express.json());
+
+// Schema validation
+const UserSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  age: z.number().min(18).optional(),
+});
+
+// GET endpoint
+app.get("/api/users/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const user = await db.user.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// POST endpoint with validation
+app.post("/api/users", async (req: Request, res: Response) => {
+  try {
+    const validatedData = UserSchema.parse(req.body);
+
+    const newUser = await db.user.create({
+      data: validatedData,
+    });
+
+    res.status(201).json(newUser);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors });
+    }
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
+```
+
+### Manejo de Errores
+
+El manejo apropiado de errores es crucial:
+
+```javascript
+class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+// Middleware de manejo de errores
+app.use((err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || "error";
+
+  res.status(err.statusCode).json({
+    status: err.status,
+    message: err.message,
+  });
+});
+```
+
+## Base de Datos y ORM
+
+### Prisma: El ORM Moderno
+
+Prisma ha revolucionado la forma en que interactuamos con bases de datos:
+
+```prisma
+// schema.prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+}
+```
+
+## Mejores Prácticas
+
+### 1. Seguridad
+
+> **Importante**: Nunca confíes en los datos del usuario sin validación
+
+Implementa siempre:
+
+- Validación de entrada
+- Sanitización de datos
+- Rate limiting
+- Autenticación y autorización robustas
+- HTTPS en producción
+
+### 2. Testing
+
+Los tests son fundamentales para código confiable:
+
+```bash
+# Instalar dependencias de testing
+bun add -d vitest @vitest/ui
+bun add -d @testing-library/react @testing-library/jest-dom
+```
+
+### 3. Documentación
+
+Usa herramientas como Swagger/OpenAPI:
+
+```yaml
+openapi: 3.0.0
+info:
+  title: API de Usuarios
+  version: 1.0.0
+paths:
+  /api/users:
+    get:
+      summary: Obtener todos los usuarios
+      responses:
+        "200":
+          description: Lista de usuarios
+```
+
+## Herramientas Esenciales
+
+| Herramienta | Propósito        | Popularidad |
+| ----------- | ---------------- | ----------- |
+| Express     | Framework web    | ⭐⭐⭐⭐⭐  |
+| Fastify     | Framework rápido | ⭐⭐⭐⭐    |
+| Prisma      | ORM              | ⭐⭐⭐⭐⭐  |
+| TypeScript  | Type safety      | ⭐⭐⭐⭐⭐  |
+| Zod         | Validación       | ⭐⭐⭐⭐    |
+
+## Deployment y DevOps
+
+### Contenedores con Docker
+
+```dockerfile
+FROM oven/bun:1 as base
+WORKDIR /app
+
+# Install dependencies
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+# Copy source
+COPY . .
+
+# Build
+RUN bun run build
+
+# Production
+FROM oven/bun:1-slim
+WORKDIR /app
+COPY --from=base /app/dist ./dist
+COPY --from=base /app/node_modules ./node_modules
+
+EXPOSE 3000
+CMD ["bun", "run", "dist/index.js"]
+```
+
+### Variables de Entorno
+
+Nunca hardcodees configuraciones sensibles:
+
+```bash
+# .env
+DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+JWT_SECRET="tu-secreto-super-seguro"
+PORT=3000
+NODE_ENV=production
+```
+
+## Conclusión
+
+El desarrollo backend es un campo en constante evolución. Las claves del éxito son:
+
+1. **Mantente actualizado** con las últimas tecnologías
+2. **Escribe código limpio** y mantenible
+3. **Testea todo** lo que puedas
+4. **Documenta** tu código y APIs
+5. **Piensa en escalabilidad** desde el inicio
+
+### Recursos Adicionales
+
+Para profundizar más, te recomiendo:
+
+- [Node.js Documentation](https://nodejs.org/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs)
+- [Prisma Guides](https://www.prisma.io/docs)
+- [Express Best Practices](https://expressjs.com/en/advanced/best-practice-security.html)
+
+---
+
+**Nota**: Este artículo se actualiza regularmente con las últimas tendencias y mejores prácticas del ecosistema Node.js.
+
+_Última actualización: Octubre 2025_
