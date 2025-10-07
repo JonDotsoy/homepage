@@ -3,6 +3,7 @@ import {
   IconBrandGithub,
   IconBrandLinkedin,
   IconMail,
+  IconLanguage,
 } from "@tabler/icons-react";
 import data from "@/data/general.json";
 import { dictionary } from "@/dictionaries";
@@ -15,6 +16,7 @@ const { lang = "es" } = Astro.props;
 const dict = dictionary(lang);
 
 const currentYear = new Date().getFullYear();
+const languageUrl = lang === "es" ? "/en" : "/";
 ---
 
 <footer class="w-full border-t border-stone-200">
@@ -23,7 +25,7 @@ const currentYear = new Date().getFullYear();
       class="flex flex-col items-center justify-center gap-6 md:flex-row md:justify-between"
     >
       <!-- Social Links -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 flex-wrap">
         <a
           href={data.personal.github}
           target="_blank"
@@ -53,6 +55,15 @@ const currentYear = new Date().getFullYear();
         >
           <IconMail className="h-4 w-4" />
           <span class="font-medium">{dict.footer.contact}</span>
+        </a>
+
+        <a
+          href={languageUrl}
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label={dict.footer.language}
+        >
+          <IconLanguage className="h-4 w-4" />
+          <span class="font-medium">{dict.footer.language}</span>
         </a>
       </div>
 
