@@ -10,10 +10,9 @@
   "about": {
     "title": "Sobre mí",
     "content": [
-      "Jona es un desarrollador de software especializado en aplicaciones web, con un enfoque sólido en backend y experiencia en el sector fintech. Combina una mentalidad técnica rigurosa con visión estratégica, priorizando la calidad del código, la escalabilidad de las soluciones y la entrega de resultados tangibles.",
-      "Su trabajo se apoya en metodologías como TDD y en el uso de herramientas de inteligencia artificial para optimizar procesos y flujos de desarrollo. Domina tecnologías modernas como .NET, TypeScript, React, Astro, Tailwind, y herramientas de infraestructura como Docker, Terraform, Google Cloud Platform y Cloudflare Workers.",
-      "Su día a día gira en torno a la automatización, la mejora continua y la colaboración efectiva en equipos técnicos que valoran la innovación y las buenas prácticas. Además de su labor técnica, Jona disfruta mentorar y asesorar a startups y pequeñas empresas, ayudándolas a estructurar estrategias tecnológicas y potenciar sus equipos.",
-      "Con un nivel intermedio de inglés y una comunicación clara y asertiva, aporta una combinación equilibrada entre conocimiento técnico, liderazgo humano y orientación a resultados."
+      "Soy Jona, software engineer enfocado en desarrollar aplicaciones web, principalmente del lado backend. Me gusta crear soluciones que realmente funcionen, con código limpio y escalable, y usar tecnología de forma práctica para resolver problemas. He trabajado bastante en el mundo fintech, donde aprendí a equilibrar lo técnico con lo estratégico para entregar productos que aportan valor real.",
+      "En mi día a día suelo trabajar con .NET, TypeScript, React, Astro, Tailwind, Docker, Terraform y Google Cloud, además de aplicar TDD y apoyarme en herramientas de inteligencia artificial para optimizar mis flujos de trabajo. Disfruto colaborar en equipos donde la comunicación es clara y todos remamos hacia el mismo objetivo.",
+      "Fuera de lo puramente técnico, me gusta mentorar y asesorar a personas o startups, ayudándoles a tomar decisiones tecnológicas y a crecer profesionalmente. Creo en el aprendizaje constante, en compartir conocimiento y en mantener una mentalidad curiosa y humana en cada proyecto. Ah, y tengo un nivel intermedio de inglés, suficiente para trabajar sin problema en entornos internacionales."
     ]
   },
   "footer": {

@@ -10,10 +10,9 @@
   "about": {
     "title": "About me",
     "content": [
-      "Jona is a software developer specialized in web applications, with a solid focus on backend and experience in the fintech sector. He combines a rigorous technical mindset with strategic vision, prioritizing code quality, solution scalability, and delivery of tangible results.",
-      "His work is supported by methodologies like TDD and the use of artificial intelligence tools to optimize processes and development workflows. He masters modern technologies like .NET, TypeScript, React, Astro, Tailwind, and infrastructure tools like Docker, Terraform, Google Cloud Platform, and Cloudflare Workers.",
-      "His daily work revolves around automation, continuous improvement, and effective collaboration in technical teams that value innovation and best practices. Beyond his technical work, Jona enjoys mentoring and advising startups and small businesses, helping them structure technological strategies and empower their teams.",
-      "With an intermediate level of English and clear, assertive communication, he brings a balanced combination of technical knowledge, human leadership, and results orientation."
+      "I'm Jona, a software engineer focused on building web applications, mainly on the backend side. I enjoy creating solutions that actually work, with clean and scalable code, and using technology in practical ways to solve problems. I've worked extensively in the fintech world, where I learned to balance the technical with the strategic to deliver products that bring real value.",
+      "Day to day, I usually work with .NET, TypeScript, React, Astro, Tailwind, Docker, Terraform, and Google Cloud, while applying TDD and leveraging AI tools to optimize my workflows. I enjoy collaborating in teams where communication is clear and everyone rows toward the same goal.",
+      "Beyond the purely technical, I like mentoring and advising people or startups, helping them make technology decisions and grow professionally. I believe in constant learning, sharing knowledge, and maintaining a curious and human mindset in every project. Oh, and I have an intermediate level of English, enough to work without issues in international environments."
     ]
   },
   "footer": {
