@@ -1,0 +1,19 @@
+---
+import Footer from "@/sections/footer.astro";
+import DefaultLayout from "./DefaultLayout.astro";
+
+type DefaultLayoutProps = React.ComponentProps<typeof DefaultLayout>;
+
+type Props = DefaultLayoutProps & {};
+
+const props = Astro.props;
+---
+
+<DefaultLayout {...props}>
+  <main class="px-4 py-6">
+    <article class="prose prose-zinc lg:prose-xl prose-code:w-full mx-auto">
+      <slot />
+    </article>
+  </main>
+  <Footer />
+</DefaultLayout>
