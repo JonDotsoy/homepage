@@ -104,14 +104,16 @@ export function DotGrid404({ className }: DotGrid404Props) {
           cy={dot.y + dotSize}
           r={dotSize}
           className={cn(
-            `animate-pulse delay-(--pulse-delay) fill-primary origin-center`,
+            `animate-pulse animation-duration-[4000ms] delay-(--pulse-delay) fill-primary origin-center`,
             dot.isActive ? "opacity-100 fill-accent" : "opacity-10",
           )}
-          style={{
-            '--pulse-delay': `${dot.pulseDelay}s`,
-            // animation: `pulse ${dot.pulseDuration}s ease-in-out ${dot.pulseDelay}s infinite`,
-            // transformOrigin: `${dot.x}px ${dot.y}px`,
-          }}
+          style={
+            {
+              "--pulse-delay": `${dot.pulseDelay}s`,
+              // animation: `pulse ${dot.pulseDuration}s ease-in-out ${dot.pulseDelay}s infinite`,
+              // transformOrigin: `${dot.x}px ${dot.y}px`,
+            } as {}
+          }
         />
       ))}
     </svg>
