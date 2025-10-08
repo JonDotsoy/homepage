@@ -1,6 +1,7 @@
 ---
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import Footer from "@/sections/footer.astro";
+import { DotGrid404 } from "@/components/ui/DotGrid404";
 import "@/styles/global.css";
 ---
 
@@ -9,7 +10,7 @@ import "@/styles/global.css";
     <div class="grid grid-cols-1 min-h-screen content-around">
       <div class="text-center">
         <div class="mb-8">
-          <h1 class="text-9xl font-bold text-primary">404</h1>
+          <DotGrid404 />
         </div>
 
         <h2 class="mb-4 text-3xl font-semibold">Page not found</h2>
@@ -33,3 +34,15 @@ import "@/styles/global.css";
   </div>
   <Footer lang="en" />
 </DefaultLayout>
+
+<style>
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.03);
+    }
+  }
+</style>
