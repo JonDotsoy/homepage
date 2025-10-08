@@ -105,7 +105,7 @@ export function DotGrid404({ className }: DotGrid404Props) {
           r={dotSize}
           className={cn(
             `animate-pulse delay-(--pulse-delay) fill-primary origin-center`,
-            dot.isActive ? "opacity-100" : "opacity-10",
+            dot.isActive ? "opacity-100 fill-accent" : "opacity-10",
           )}
           style={{
             '--pulse-delay': `${dot.pulseDelay}s`,
