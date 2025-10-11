@@ -11,7 +11,7 @@
     "title": "About me",
     "content": [
       "I'm Jona, a software engineer focused on building web applications, mainly on the backend side. I enjoy creating solutions that actually work, with clean and scalable code, and using technology in practical ways to solve problems. I've worked extensively in the fintech world, where I learned to balance the technical with the strategic to deliver products that bring real value.",
-      "Day to day, I usually work with .NET, TypeScript, React, Astro, Tailwind, Docker, Terraform, and Google Cloud, while applying TDD and leveraging AI tools to optimize my workflows. I enjoy collaborating in teams where communication is clear and everyone rows toward the same goal.",
+      "Day to day, I mainly work with .NET, TypeScript, React, Astro, and Tailwind for web development, while I use Docker, Terraform, and Google Cloud for infrastructure. I apply TDD as a methodology and leverage AI tools to make my workflows more efficient. I love working in teams where communication flows and we're all aligned toward the same goals.",
       "Beyond the purely technical, I like mentoring and advising people or startups, helping them make technology decisions and grow professionally. I believe in constant learning, sharing knowledge, and maintaining a curious and human mindset in every project. Oh, and I have an intermediate level of English, enough to work without issues in international environments."
     ]
   },
