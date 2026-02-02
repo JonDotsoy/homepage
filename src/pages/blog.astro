@@ -22,6 +22,49 @@ const postsWithOptimizedImages = await Promise.all(
     return post;
   }),
 );
+
+const blogUrl = new URL("/blog", Astro.site || Astro.url.origin).href;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  name: "Blog - Jonathan Delgado",
+  description: "Artículos sobre desarrollo web, tecnología y más",
+  url: blogUrl,
+  author: {
+    "@type": "Person",
+    name: "Jonathan Delgado",
+    email: "hi@jon.soy",
+    url: "https://jon.soy",
+  },
+  blogPost: await Promise.all(
+    sortedPosts.map(async (post) => {
+      const articleUrl = new URL(`/blog/${post.id}`, Astro.site || Astro.url.origin).href;
+      let imageUrl = "";
+      if (post.data.cover) {
+        const optimizedCover = await getImage({
+          src: post.data.cover,
+          width: 1200,
+          height: 630,
+          format: "webp",
+        });
+        imageUrl = new URL(optimizedCover.src, Astro.site || Astro.url.origin).href;
+      }
+      return {
+        "@type": "BlogPosting",
+        headline: post.data.title,
+        description: post.data.description,
+        url: articleUrl,
+        image: imageUrl || undefined,
+        datePublished: new Date(post.data.date).toISOString(),
+        author: {
+          "@type": "Person",
+          name: post.data.author.name,
+        },
+      };
+    })
+  ),
+};
 ---
 
 <DefaultLayout
@@ -29,6 +72,26 @@ const postsWithOptimizedImages = await Promise.all(
   description="Artículos sobre desarrollo web, tecnología y más"
   lang="es"
 >
+  <Fragment slot="head">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={blogUrl} />
+    <meta property="og:title" content="Blog - Jonathan Delgado" />
+    <meta property="og:description" content="Artículos sobre desarrollo web, tecnología y más" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:url" content={blogUrl} />
+    <meta name="twitter:title" content="Blog - Jonathan Delgado" />
+    <meta name="twitter:description" content="Artículos sobre desarrollo web, tecnología y más" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={blogUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+  </Fragment>
+
   <div class="container mx-auto px-4 py-16">
     <h1 class="text-4xl font-bold mb-8">Blog</h1>
 
