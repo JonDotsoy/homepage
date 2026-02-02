@@ -4,6 +4,45 @@ import data from "@/data/general.json";
 import HelloHero from "@/sections/hello-hero.astro";
 import AboutMe from "@/sections/about-me.astro";
 import Footer from "@/sections/footer.astro";
+
+const homeUrl = new URL("/", Astro.site || Astro.url.origin).href;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: data.personal.name,
+  email: data.personal.email,
+  url: homeUrl,
+  jobTitle: data.professional.title,
+  nationality: data.personal.nationality,
+  sameAs: [
+    data.personal.linkedin,
+    data.personal.github,
+  ],
+  knowsLanguage: [
+    {
+      "@type": "Language",
+      name: data.languages.native,
+    },
+    ...data.languages.additional.map((lang) => ({
+      "@type": "Language",
+      name: lang.language,
+    })),
+  ],
+  hasOccupation: {
+    "@type": "Occupation",
+    name: data.professional.title,
+    occupationLocation: {
+      "@type": "Country",
+      name: "Chile",
+    },
+    skills: data.professional.specializations,
+  },
+  mainEntityOfPage: {
+    "@type": "ProfilePage",
+    "@id": homeUrl,
+  },
+};
 ---
 
 <DefaultLayout
@@ -12,6 +51,28 @@ import Footer from "@/sections/footer.astro";
   keywords={data.seo.keywords}
   lang="es"
 >
+  <Fragment slot="head">
+    <!-- Open Graph -->
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content={homeUrl} />
+    <meta property="og:title" content={data.seo.title} />
+    <meta property="og:description" content={data.seo.description} />
+    <meta property="profile:first_name" content="Jonathan" />
+    <meta property="profile:last_name" content="Delgado Zamorano" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:url" content={homeUrl} />
+    <meta name="twitter:title" content={data.seo.title} />
+    <meta name="twitter:description" content={data.seo.description} />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={homeUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+  </Fragment>
+
   <HelloHero lang="es" />
   <AboutMe lang="es" />
   <Footer lang="es" />
