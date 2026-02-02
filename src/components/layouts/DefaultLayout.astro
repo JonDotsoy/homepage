@@ -1,5 +1,6 @@
 ---
 import "../../styles/global.css";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
   title?: string;
@@ -28,6 +29,7 @@ const { title = "Astro", description, keywords, lang } = Astro.props;
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
     {keywords && <meta name="keywords" content={keywords} />}
+    <ClientRouter />
     <slot name="head" />
   </head>
   <body>
