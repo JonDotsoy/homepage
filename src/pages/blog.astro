@@ -39,7 +39,10 @@ const jsonLd = {
   },
   blogPost: await Promise.all(
     sortedPosts.map(async (post) => {
-      const articleUrl = new URL(`/blog/${post.id}`, Astro.site || Astro.url.origin).href;
+      const articleUrl = new URL(
+        `/blog/${post.id}`,
+        Astro.site || Astro.url.origin,
+      ).href;
       let imageUrl = "";
       if (post.data.cover) {
         const optimizedCover = await getImage({
@@ -48,7 +51,8 @@ const jsonLd = {
           height: 630,
           format: "webp",
         });
-        imageUrl = new URL(optimizedCover.src, Astro.site || Astro.url.origin).href;
+        imageUrl = new URL(optimizedCover.src, Astro.site || Astro.url.origin)
+          .href;
       }
       return {
         "@type": "BlogPosting",
@@ -62,7 +66,7 @@ const jsonLd = {
           name: post.data.author.name,
         },
       };
-    })
+    }),
   ),
 };
 ---
@@ -77,19 +81,29 @@ const jsonLd = {
     <meta property="og:type" content="website" />
     <meta property="og:url" content={blogUrl} />
     <meta property="og:title" content="Blog - Jonathan Delgado" />
-    <meta property="og:description" content="Artículos sobre desarrollo web, tecnología y más" />
+    <meta
+      property="og:description"
+      content="Artículos sobre desarrollo web, tecnología y más"
+    />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:url" content={blogUrl} />
     <meta name="twitter:title" content="Blog - Jonathan Delgado" />
-    <meta name="twitter:description" content="Artículos sobre desarrollo web, tecnología y más" />
+    <meta
+      name="twitter:description"
+      content="Artículos sobre desarrollo web, tecnología y más"
+    />
 
     <!-- Canonical URL -->
     <link rel="canonical" href={blogUrl} />
 
     <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
   </Fragment>
 
   <div class="container mx-auto px-4 py-16">
@@ -110,7 +124,10 @@ const jsonLd = {
                 />
               )}
               <div class="p-6">
-                <h2 class="text-2xl font-semibold mb-2 hover:text-accent-foreground">
+                <h2
+                  class="text-2xl font-semibold mb-2 hover:text-accent-foreground"
+                  transition:name={`article-title-${post.id}`}
+                >
                   {post.data.title}
                 </h2>
                 <p class="text-muted-foreground text-sm mb-3">
