@@ -4,6 +4,7 @@ import {
   IconBrandLinkedin,
   IconMail,
   IconLanguage,
+  IconArticle,
 } from "@tabler/icons-react";
 import data from "@/data/general.json";
 import { dictionary } from "@/dictionaries";
@@ -26,6 +27,15 @@ const languageUrl = lang === "es" ? "/en" : "/";
     >
       <!-- Social Links -->
       <div class="flex items-center gap-3 flex-wrap">
+        <a
+          href="/blog"
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label="Blog"
+        >
+          <IconArticle className="h-4 w-4" />
+          <span class="font-medium">Blog</span>
+        </a>
+
         <a
           href={data.personal.github}
           target="_blank"
