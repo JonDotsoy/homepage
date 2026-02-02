@@ -11,8 +11,6 @@ author:
 date: 2026-02-01
 ---
 
-# Por qué usar Runbooks: Automatiza la documentación de escenarios reproducibles con IA
-
 ## Overview
 
 Con este artículo quiero que desde ahora el crear runbooks sea un ritual natural que sea parte de tu flujo de trabajo, ya sea que seas parte del equipo de QA, Dev, DevOps, análisis de datos, etc. La creación de runbooks debería ser una práctica natural y recurrente para ti, y no solo una tarea en el tablero que deba ser solicitada por alguien más.
