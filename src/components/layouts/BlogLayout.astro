@@ -10,6 +10,7 @@ const props = Astro.props;
 ---
 
 <DefaultLayout {...props}>
+  <slot name="head" slot="head" />
   <main class="px-4 py-6">
     <article class="prose prose-zinc lg:prose-xl prose-code:w-full mx-auto">
       <slot />

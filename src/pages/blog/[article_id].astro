@@ -1,0 +1,145 @@
+---
+import { getCollection, getEntry, render } from "astro:content";
+import { getImage } from "astro:assets";
+import BlogLayout from "../../components/layouts/BlogLayout.astro";
+
+export async function getStaticPaths() {
+  const blogEntries = await getCollection("blog");
+  return blogEntries.map((entry: any) => ({
+    params: { article_id: entry.id },
+  }));
+}
+
+const { article_id } = Astro.params;
+const entry = await getEntry("blog", article_id!);
+
+if (!entry) {
+  return Astro.redirect("/404");
+}
+
+const { Content } = await render(entry);
+const {
+  title,
+  description,
+  author,
+  date,
+  tags,
+  cover,
+  lang = "es",
+} = entry.data;
+
+const articleUrl = new URL(
+  `/blog/${article_id}`,
+  Astro.site || Astro.url.origin,
+).href;
+const publishedDate = new Date(date).toISOString();
+
+let coverImageUrl = "";
+if (cover) {
+  const optimizedCover = await getImage({
+    src: cover,
+    width: 1200,
+    height: 630,
+    format: "webp",
+  });
+  coverImageUrl = new URL(optimizedCover.src, Astro.site || Astro.url.origin)
+    .href;
+}
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: title,
+  description: description,
+  image: coverImageUrl || undefined,
+  datePublished: publishedDate,
+  dateModified: publishedDate,
+  author: {
+    "@type": "Person",
+    name: author.name,
+    email: author.email,
+    url: author.website,
+  },
+  publisher: {
+    "@type": "Person",
+    name: author.name,
+  },
+  mainEntityOfPage: {
+    "@type": "WebPage",
+    "@id": articleUrl,
+  },
+  keywords: tags?.join(", "),
+  inLanguage: lang,
+};
+---
+
+<BlogLayout title={`${title} - Blog`} description={description} lang={lang}>
+  <Fragment slot="head">
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content={articleUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {coverImageUrl && <meta property="og:image" content={coverImageUrl} />}
+    <meta property="article:published_time" content={publishedDate} />
+    <meta property="article:author" content={author.name} />
+    {tags?.map((tag) => <meta property="article:tag" content={tag} />)}
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={articleUrl} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {coverImageUrl && <meta name="twitter:image" content={coverImageUrl} />}
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={articleUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
+  </Fragment>
+
+  <header class="mb-8">
+    <h1 class="text-4xl font-bold mb-4">{title}</h1>
+    <div class="text-muted-foreground mb-4">
+      <p class="mb-2">
+        Por <span class="font-semibold">{author.name}</span>
+      </p>
+      <p>
+        {
+          new Date(date).toLocaleDateString("es-ES", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        }
+      </p>
+    </div>
+    {
+      tags && tags.length > 0 && (
+        <div class="flex flex-wrap gap-2 mb-6">
+          {tags.map((tag: string) => (
+            <span class="text-sm bg-accent text-accent-foreground px-3 py-1 rounded-full">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )
+    }
+  </header>
+
+  <Content />
+
+  <footer class="mt-12 pt-6 border-t border-border">
+    <a
+      href="/blog"
+      class="text-accent-foreground hover:underline inline-flex items-center gap-2"
+    >
+      ← Volver al blog
+    </a>
+  </footer>
+</BlogLayout>

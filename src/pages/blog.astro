@@ -1,0 +1,77 @@
+---
+import { getCollection } from "astro:content";
+import { getImage } from "astro:assets";
+import DefaultLayout from "../components/layouts/DefaultLayout.astro";
+
+const allBlogPosts = await getCollection("blog");
+const sortedPosts = allBlogPosts.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
+);
+
+const postsWithOptimizedImages = await Promise.all(
+  sortedPosts.map(async (post) => {
+    if (post.data.cover) {
+      const optimizedCover = await getImage({
+        src: post.data.cover,
+        width: 400,
+        height: 200,
+        format: "webp",
+      });
+      return { ...post, optimizedCover };
+    }
+    return post;
+  }),
+);
+---
+
+<DefaultLayout
+  title="Blog - Jonathan Delgado"
+  description="Artículos sobre desarrollo web, tecnología y más"
+  lang="es"
+>
+  <div class="container mx-auto px-4 py-16">
+    <h1 class="text-4xl font-bold mb-8">Blog</h1>
+
+    <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      {
+        postsWithOptimizedImages.map((post) => (
+          <article class="border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+            <a href={`/blog/${post.id}`} class="block">
+              {"optimizedCover" in post && post.optimizedCover && (
+                <img
+                  src={post.optimizedCover.src}
+                  alt={post.data.title}
+                  width={post.optimizedCover.attributes.width}
+                  height={post.optimizedCover.attributes.height}
+                  class="w-full h-48 object-cover"
+                />
+              )}
+              <div class="p-6">
+                <h2 class="text-2xl font-semibold mb-2 hover:text-accent-foreground">
+                  {post.data.title}
+                </h2>
+                <p class="text-muted-foreground text-sm mb-3">
+                  {new Date(post.data.date).toLocaleDateString("es-ES", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+                <p class="text-foreground mb-4">{post.data.description}</p>
+                {post.data.tags && post.data.tags.length > 0 && (
+                  <div class="flex flex-wrap gap-2">
+                    {post.data.tags.map((tag: string) => (
+                      <span class="text-xs bg-accent text-accent-foreground px-2 py-1 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </a>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</DefaultLayout>
