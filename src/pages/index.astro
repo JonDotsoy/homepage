@@ -15,10 +15,7 @@ const jsonLd = {
   url: homeUrl,
   jobTitle: data.professional.title,
   nationality: data.personal.nationality,
-  sameAs: [
-    data.personal.linkedin,
-    data.personal.github,
-  ],
+  sameAs: [data.personal.linkedin, data.personal.github],
   knowsLanguage: [
     {
       "@type": "Language",
@@ -70,7 +67,11 @@ const jsonLd = {
     <link rel="canonical" href={homeUrl} />
 
     <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
   </Fragment>
 
   <HelloHero lang="es" />

@@ -104,7 +104,12 @@ const jsonLd = {
   </Fragment>
 
   <header class="mb-8">
-    <h1 class="text-4xl font-bold mb-4" transition:name={`article-title-${article_id}`}>{title}</h1>
+    <h1
+      class="text-4xl font-bold mb-4"
+      transition:name={`article-title-${article_id}`}
+    >
+      {title}
+    </h1>
     <div class="text-muted-foreground mb-4">
       <p class="mb-2">
         Por <span class="font-semibold">{author.name}</span>
