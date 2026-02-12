@@ -15,8 +15,8 @@
   ],
   "routes": [
     {
-      "pattern": "jon.soy/*",
-      "zone_name": "jon.soy"
+      "pattern": "jon.soy",
+      "custom_domain": true
     }
   ]
 }

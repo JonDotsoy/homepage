@@ -1,6 +1,7 @@
 ---
 import Footer from "@/sections/footer.astro";
 import DefaultLayout from "./DefaultLayout.astro";
+import BlogHeader from "@/components/blog-header.astro";
 
 type DefaultLayoutProps = React.ComponentProps<typeof DefaultLayout>;
 
@@ -11,6 +12,7 @@ const props = Astro.props;
 
 <DefaultLayout {...props}>
   <slot name="head" slot="head" />
+  <BlogHeader />
   <main class="px-4 py-6">
     <article class="prose prose-zinc lg:prose-xl prose-code:w-full mx-auto">
       <slot />

@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import { getImage } from "astro:assets";
 import DefaultLayout from "../components/layouts/DefaultLayout.astro";
+import BlogHeader from "../components/blog-header.astro";
 import { Temporal } from "temporal-polyfill";
 
 export const prerender = true;
@@ -134,6 +135,7 @@ const jsonLd = {
     />
   </Fragment>
 
+  <BlogHeader />
   <div class="container mx-auto px-4 py-16">
     {
       groupedPosts.map(({ monthPlainDateString, monthPlainDate, posts }) => (

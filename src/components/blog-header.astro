@@ -1,0 +1,86 @@
+---
+---
+
+<header class="px-4 py-4">
+  <a href="/" aria-label="Ir al inicio" class="logo-link inline-block">
+    <div class="logo-icon w-8 h-8 relative">
+      <div class="absolute inset-0 bg-[#A38CE2] rounded-sm"></div>
+      <div class="absolute inset-[3px] bg-[#B59FF2] rounded-sm"></div>
+      <div class="absolute inset-1.5 bg-[#BDAAF2] rounded-sm"></div>
+    </div>
+  </a>
+</header>
+
+<script>
+  const header = document.querySelector("header")!;
+  const divs = [
+    ...header.querySelectorAll<HTMLElement>(".logo-icon > div"),
+  ];
+
+  const HOVER = [
+    "rotate(45deg) translateX(0px) translateY(0px)",
+    "rotate(45deg) translateX(8px) translateY(0px)",
+    "rotate(45deg) translateX(5px) translateY(-10px)",
+  ];
+
+  const IDLE = [
+    "rotate(45deg) translateX(30px) translateY(20px)",
+    "rotate(45deg) translateX(28px) translateY(-30px)",
+    "rotate(45deg) translateX(55px) translateY(-130px)",
+  ];
+
+  const FLOAT_PEAK = [
+    "rotate(45deg) translateX(34px) translateY(16px)",
+    "rotate(45deg) translateX(24px) translateY(-26px)",
+    "rotate(45deg) translateX(59px) translateY(-126px)",
+  ];
+
+  const FLOAT_DURATION = [2500, 3000, 2000];
+  const FLOAT_DELAY = [0, 400, 800];
+
+  function cancelAll() {
+    divs.forEach((d) => d.getAnimations().forEach((a) => a.cancel()));
+  }
+
+  function startFloat() {
+    divs.forEach((div, i) => {
+      div.animate([{ transform: IDLE[i] }, { transform: FLOAT_PEAK[i] }, { transform: IDLE[i] }], {
+        duration: FLOAT_DURATION[i],
+        delay: FLOAT_DELAY[i],
+        iterations: Infinity,
+        easing: "ease-in-out",
+      });
+    });
+  }
+
+  startFloat();
+
+  header.addEventListener("mouseenter", () => {
+    const current = divs.map((d) => getComputedStyle(d).transform);
+    cancelAll();
+    divs.forEach((div, i) => {
+      div.animate([{ transform: current[i] }, { transform: HOVER[i] }], {
+        duration: 300,
+        easing: "ease-out",
+        fill: "forwards",
+      });
+    });
+  });
+
+  header.addEventListener("mouseleave", () => {
+    const current = divs.map((d) => getComputedStyle(d).transform);
+    cancelAll();
+    let done = 0;
+    divs.forEach((div, i) => {
+      const anim = div.animate([{ transform: current[i] }, { transform: IDLE[i] }], {
+        duration: 300,
+        easing: "ease-in",
+        fill: "forwards",
+      });
+      anim.onfinish = () => {
+        anim.cancel();
+        if (++done === divs.length) startFloat();
+      };
+    });
+  });
+</script>

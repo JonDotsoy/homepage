@@ -2,7 +2,7 @@
 title: "Por qué usar Runbooks: Automatiza la documentación de escenarios reproducibles con IA"
 description: "Aprenderás a crear runbooks y generar evidencia de su ejecución con ayuda de IA para documentar y validar escenarios reproducibles en tus proyectos."
 cover: ./assets/cover.png
-lang: es
+lang: es-CL
 author:
   name: Jonathan Delgado
   email: hi@jon.soy
