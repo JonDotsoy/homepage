@@ -8,7 +8,7 @@ author:
   email: hi@jon.soy
   website: https://jon.soy
   github: "@jondotsoy"
-date: 2026-02-01
+date: "2026-02-01"
 ---
 
 ## Overview
