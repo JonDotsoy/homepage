@@ -16,7 +16,7 @@
   "routes": [
     {
       "pattern": "jon.soy",
-      "custom_domain": true
-    }
-  ]
+      "custom_domain": true,
+    },
+  ],
 }

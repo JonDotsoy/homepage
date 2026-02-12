@@ -7,14 +7,33 @@ interface Props {
 
 const { articleId } = Astro.props;
 
-const visits: number = Number(
-  (await Astro.locals.runtime.env.BLOG_POSTS_VISITS.get(articleId)) ?? 0,
-);
-const nextVisits = visits + 1;
-await Astro.locals.runtime.env.BLOG_POSTS_VISITS.put(
-  articleId,
-  String(nextVisits),
-);
+const keyCache = `blog-post-${articleId}-visited`;
+
+const visited = (await Astro.cookies.get(keyCache)?.boolean()) ?? false;
+
+if (!visited) {
+  await Astro.cookies.set(keyCache, "true", {
+    path: import.meta.url,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+  });
+}
+
+const getVisits = async (): Promise<number> => {
+  const visits: number = Number(
+    (await Astro.locals.runtime.env.BLOG_POSTS_VISITS.get(articleId)) ?? 0,
+  );
+
+  if (visited) return visits;
+
+  await Astro.locals.runtime.env.BLOG_POSTS_VISITS.put(
+    articleId,
+    String(visits + 1),
+  );
+
+  return visits + 1;
+};
+
+const visits = await getVisits();
 ---
 
-{nextVisits}
+{visits}

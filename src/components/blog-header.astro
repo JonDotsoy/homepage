@@ -1,4 +1,5 @@
 ---
+
 ---
 
 <header class="px-4 py-4">
@@ -13,9 +14,7 @@
 
 <script>
   const header = document.querySelector("header")!;
-  const divs = [
-    ...header.querySelectorAll<HTMLElement>(".logo-icon > div"),
-  ];
+  const divs = [...header.querySelectorAll<HTMLElement>(".logo-icon > div")];
 
   const HOVER = [
     "rotate(45deg) translateX(0px) translateY(0px)",
@@ -44,12 +43,19 @@
 
   function startFloat() {
     divs.forEach((div, i) => {
-      div.animate([{ transform: IDLE[i] }, { transform: FLOAT_PEAK[i] }, { transform: IDLE[i] }], {
-        duration: FLOAT_DURATION[i],
-        delay: FLOAT_DELAY[i],
-        iterations: Infinity,
-        easing: "ease-in-out",
-      });
+      div.animate(
+        [
+          { transform: IDLE[i] },
+          { transform: FLOAT_PEAK[i] },
+          { transform: IDLE[i] },
+        ],
+        {
+          duration: FLOAT_DURATION[i],
+          delay: FLOAT_DELAY[i],
+          iterations: Infinity,
+          easing: "ease-in-out",
+        },
+      );
     });
   }
 
@@ -72,11 +78,14 @@
     cancelAll();
     let done = 0;
     divs.forEach((div, i) => {
-      const anim = div.animate([{ transform: current[i] }, { transform: IDLE[i] }], {
-        duration: 300,
-        easing: "ease-in",
-        fill: "forwards",
-      });
+      const anim = div.animate(
+        [{ transform: current[i] }, { transform: IDLE[i] }],
+        {
+          duration: 300,
+          easing: "ease-in",
+          fill: "forwards",
+        },
+      );
       anim.onfinish = () => {
         anim.cancel();
         if (++done === divs.length) startFloat();

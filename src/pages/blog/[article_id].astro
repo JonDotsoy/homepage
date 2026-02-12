@@ -21,14 +21,7 @@ if (!entry) {
 }
 
 const { Content } = await render(entry);
-const {
-  title,
-  description,
-  author,
-  tags,
-  cover,
-  lang = "es",
-} = entry.data;
+const { title, description, author, tags, cover, lang = "es" } = entry.data;
 const date = Temporal.PlainDate.from(entry.data.date);
 
 const articleUrl = new URL(
@@ -125,7 +118,7 @@ const jsonLd = {
           </span>
           <samp class="inline-flex items-center gap-1">
             <Calendar size={14} />
-            {date.toLocaleString(lang, { dateStyle:'full' })}
+            {date.toLocaleString(lang, { dateStyle: "full" })}
           </samp>
         </p>
       </div>
