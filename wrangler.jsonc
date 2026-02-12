@@ -2,6 +2,8 @@
   "name": "homepage",
   "main": "dist/_worker.js/index.js",
   "compatibility_date": "2026-02-12",
+  "preview_urls": true,
+  "workers_dev": true,
   "assets": {
     "directory": "./dist",
   },
@@ -11,4 +13,10 @@
       "id": "6805cdafdf774f40b2b99d0422fe5f0e",
     },
   ],
+  "routes": [
+    {
+      "pattern": "jon.soy/*",
+      "zone_name": "jon.soy"
+    }
+  ]
 }
