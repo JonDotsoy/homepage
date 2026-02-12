@@ -114,12 +114,37 @@ const jsonLd = {
             <Eye size={14} /><BlogCounter server:defer articleId={article_id}
               ><span slot="fallback" class="counter-skeleton"
               ></span></BlogCounter
-            > visitas
+            >
+            <!-- desktop -->
+            <span class="md:block hidden">visitas</span>
           </span>
-          <samp class="inline-flex items-center gap-1">
+          <time
+            datetime={date.toPlainDateTime().toJSON()}
+            class="inline-flex items-center gap-1"
+          >
             <Calendar size={14} />
-            {date.toLocaleString(lang, { dateStyle: "full" })}
-          </samp>
+            <!-- <span class="">{date.toLocaleString(lang, { dateStyle: 'long' })}</span> -->
+            <!-- desktop -->
+            <span class="md:block hidden"
+              >{
+                date.toLocaleString(lang, {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              }</span
+            >
+            <!-- mobile -->
+            <span class="md:hidden block"
+              >{
+                date.toLocaleString(lang, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+              }</span
+            >
+          </time>
         </p>
       </div>
       {
