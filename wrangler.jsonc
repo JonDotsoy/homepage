@@ -1,0 +1,14 @@
+{
+  "name": "homepage",
+  "main": "dist/_worker.js/index.js",
+  "compatibility_date": "2026-02-12",
+  "assets": {
+    "directory": "./dist",
+  },
+  "kv_namespaces": [
+    {
+      "binding": "BLOG_POSTS_VISITS",
+      "id": "6805cdafdf774f40b2b99d0422fe5f0e",
+    },
+  ],
+}
