@@ -2,6 +2,8 @@
 import { getCollection, getEntry, render } from "astro:content";
 import { getImage } from "astro:assets";
 import BlogLayout from "../../components/layouts/BlogLayout.astro";
+import BlogCounter from "@/components/blog-counter.astro";
+import { User, Eye, Calendar } from "lucide-react";
 
 export async function getStaticPaths() {
   const blogEntries = await getCollection("blog");
@@ -103,48 +105,54 @@ const jsonLd = {
     />
   </Fragment>
 
-  <header class="mb-8">
-    <h1
-      class="text-4xl font-bold mb-4"
-      transition:name={`article-title-${article_id}`}
-    >
-      {title}
-    </h1>
-    <div class="text-muted-foreground mb-4">
-      <p class="mb-2">
-        Por <span class="font-semibold">{author.name}</span>
-      </p>
-      <p>
-        {
-          new Date(date).toLocaleDateString("es-ES", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })
-        }
-      </p>
-    </div>
-    {
-      tags && tags.length > 0 && (
-        <div class="flex flex-wrap gap-2 mb-6">
-          {tags.map((tag: string) => (
-            <span class="text-sm bg-accent text-accent-foreground px-3 py-1 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )
-    }
-  </header>
+  <div transition:name={`article-box-${article_id}`}>
+    <header class="mb-8">
+      <h1 class="text-4xl font-bold mb-4">
+        {title}
+      </h1>
+      <div class="text-muted-foreground mb-4">
+        <!-- metadata -->
+        <p class="w-full text-sm flex flex-cols-3 gap-4 text-stone-800/60">
+          <span class="font-semibold inline-flex items-center gap-1">
+            <User size={14} />{author.github}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <Eye size={14} /><BlogCounter server:defer articleId={article_id}><span slot="fallback" class="counter-skeleton"></span></BlogCounter> visitas
+          </span>
+          <samp class="inline-flex items-center gap-1">
+            <Calendar size={14} />
+            {
+              new Date(date).toLocaleDateString("es-ES", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            }
+          </samp>
+        </p>
+      </div>
+      {
+        tags && tags.length > 0 && (
+          <div class="flex flex-wrap gap-2 mb-6">
+            {tags.map((tag: string) => (
+              <span class="text-sm bg-accent text-accent-foreground px-3 py-1 rounded-full">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )
+      }
+    </header>
 
-  <Content />
+    <Content />
 
-  <footer class="mt-12 pt-6 border-t border-border">
-    <a
-      href="/blog"
-      class="text-accent-foreground hover:underline inline-flex items-center gap-2"
-    >
-      ← Volver al blog
-    </a>
-  </footer>
+    <footer class="mt-12 pt-6 border-t border-border">
+      <a
+        href="/blog"
+        class="text-accent-foreground hover:underline inline-flex items-center gap-2"
+      >
+        ← Volver al blog
+      </a>
+    </footer>
+  </div>
 </BlogLayout>

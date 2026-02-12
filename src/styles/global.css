@@ -112,6 +112,28 @@
   --sidebar-ring: oklch(0.553 0.013 58.071);
 }
 
+.counter-skeleton {
+  display: inline-block;
+  width: 1.75rem;
+  height: 0.75em;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    currentColor 25%,
+    transparent 50%,
+    currentColor 75%
+  );
+  background-size: 200% 100%;
+  opacity: 0.25;
+  animation: shimmer 1.4s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
