@@ -1,0 +1,20 @@
+---
+export const prerender = false;
+
+interface Props {
+  articleId: string;
+}
+
+const { articleId } = Astro.props;
+
+const visits: number = Number(
+  (await Astro.locals.runtime.env.BLOG_POSTS_VISITS.get(articleId)) ?? 0,
+);
+const nextVisits = visits + 1;
+await Astro.locals.runtime.env.BLOG_POSTS_VISITS.put(
+  articleId,
+  String(nextVisits),
+);
+---
+
+{nextVisits}
