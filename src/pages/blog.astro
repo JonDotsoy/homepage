@@ -30,29 +30,25 @@ const postsWithOptimizedImages = await Promise.all(
       date: post.data.date,
       plainDate: Temporal.PlainDate.from(post.data.date),
       optimizedCover,
+      lang: post.data.lang,
     };
   }),
 );
 
 // Group by month and year (newest first)
-const postsByMonthYear = postsWithOptimizedImages.reduce(
-  (acc, post) => {
-    const postPlainDate = post.plainDate;
-    const monthPlainDate = postPlainDate.with({ day: 1 });
-    const monthPlainDateString = monthPlainDate.toJSON();
-    if (!acc.has(monthPlainDateString)) acc.set(
+const postsByMonthYear = postsWithOptimizedImages.reduce((acc, post) => {
+  const postPlainDate = post.plainDate;
+  const monthPlainDate = postPlainDate.with({ day: 1 });
+  const monthPlainDateString = monthPlainDate.toJSON();
+  if (!acc.has(monthPlainDateString))
+    acc.set(monthPlainDateString, {
       monthPlainDateString,
-      {
-        monthPlainDateString,
-        monthPlainDate,
-        posts: [],
-      }
-    );
-    acc.get(monthPlainDateString)!.posts.push(post);
-    return acc;
-  },
-  new Map<string, { monthPlainDateString: string; monthPlainDate: Temporal.PlainDate; posts: typeof postsWithOptimizedImages }>(),
-);
+      monthPlainDate,
+      posts: [],
+    });
+  acc.get(monthPlainDateString)!.posts.push(post);
+  return acc;
+}, new Map<string, { monthPlainDateString: string; monthPlainDate: Temporal.PlainDate; posts: typeof postsWithOptimizedImages }>());
 const groupedPosts = Array.from(postsByMonthYear.values());
 
 const blogUrl = new URL("/blog", Astro.site || Astro.url.origin).href;
@@ -142,7 +138,12 @@ const jsonLd = {
     {
       groupedPosts.map(({ monthPlainDateString, monthPlainDate, posts }) => (
         <section class="mb-12">
-          <h2 class="text-2xl font-bold mb-6 opacity-60 capitalize">{monthPlainDate.toLocaleString('es-CL', { month: 'long', year: 'numeric' })}</h2>
+          <h2 class="text-2xl font-bold mb-6 opacity-60 capitalize">
+            {monthPlainDate.toLocaleString("es-CL", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h2>
 
           <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (
@@ -150,56 +151,64 @@ const jsonLd = {
                 class="w-full bg-white/30 hover:bg-white/60 rounded-[12px] shadow-[0_4px_20px_rgba(0,0,0,0.09)] overflow-hidden flex flex-col"
                 transition:name={`article-box-${post.id}`}
               >
-            <a href={`/blog/${post.id}`} class="block">
-              {/* <!-- Header: autor + fecha --> */}
-              <div class="flex items-center justify-between px-5 py-4">
-                <div class="flex items-center gap-2">
-                  {/* <!-- Avatar --> */}
-                  {/* <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
+                <a href={`/blog/${post.id}`} class="block">
+                  {/* <!-- Header: autor + fecha --> */}
+                  <div class="flex items-center justify-between px-5 py-4">
+                    <div class="flex items-center gap-2">
+                      {/* <!-- Avatar --> */}
+                      {/* <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
                     <span class="font-sans-ui text-white text-[13px] font-medium">J</span>
                   </div> */}
-                  <span class="font-sans-ui text-black text-[13px] font-medium">
-                    {post.author}
-                  </span>
-                </div>
-                {/* <!-- Fecha --> */}
-                <span
-                  class="font-sans-ui text-[#888888] text-[12px]"
-                  title={post.plainDate.toLocaleString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
-                >
-                  {post.plainDate.toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
+                      <span class="font-sans-ui text-black text-[13px] font-medium">
+                        {post.author}
+                      </span>
+                    </div>
+                    {/* <!-- Fecha --> */}
+                    <span
+                      class="font-sans-ui text-[#888888] text-[12px]"
+                      title={post.plainDate.toLocaleString(post.lang, {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    >
+                      {post.plainDate.toLocaleString(post.lang, {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
 
-              {/* <!-- Divider --> */}
-              <div class="h-px bg-[#F0F0F0]" />
+                  {/* <!-- Divider --> */}
+                  <div class="h-px bg-[#F0F0F0]" />
 
-              {/* <!-- Body: título + descripción --> */}
-              <div class="px-5 py-5 flex flex-col gap-[10px]">
-                <h2 class="font-serif-display italic text-black text-[22px] leading-snug">
-                  {post.title}
-                </h2>
-                <p class="font-sans-ui text-[#666666] text-[14px] leading-relaxed line-clamp-4">
-                  {post.description}
-                </p>
-              </div>
+                  {/* <!-- Body: título + descripción --> */}
+                  <div class="px-5 py-5 flex flex-col gap-[10px]">
+                    <h2 class="font-serif-display italic text-black text-[22px] leading-snug">
+                      {post.title}
+                    </h2>
+                    <p class="font-sans-ui text-[#666666] text-[14px] leading-relaxed line-clamp-4">
+                      {post.description}
+                    </p>
+                  </div>
 
-              {/* <!-- Divider --> */}
-              <div class="h-px bg-[#F0F0F0]" />
+                  {/* <!-- Divider --> */}
+                  <div class="h-px bg-[#F0F0F0]" />
 
-              {/* <!-- Cover (opcional) --> */}
-              {post.optimizedCover && (
-                <div class="w-full h-[180px] bg-[#DDDDDD] overflow-hidden">
-                  <img
-                    src={post.optimizedCover.src}
-                    alt="Cover"
-                    class="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+                  {/* <!-- Cover (opcional) --> */}
+                  {post.optimizedCover && (
+                    <div class="w-full h-[180px] bg-[#DDDDDD] overflow-hidden">
+                      <img
+                        src={post.optimizedCover.src}
+                        alt="Cover"
+                        class="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
 
-              {/* <!-- Footer: tags + botón compartir --> */}
-              {/* <div class="flex items-center justify-between px-5 py-4">
+                  {/* <!-- Footer: tags + botón compartir --> */}
+                  {/* <div class="flex items-center justify-between px-5 py-4">
                 <div class="flex items-center gap-[6px]">
                   <span class="font-sans-ui text-[#888888] text-[11px] bg-[#F5F5F5] px-[10px] py-[5px] rounded">Design</span>
                   <span class="font-sans-ui text-[#888888] text-[11px] bg-[#F5F5F5] px-[10px] py-[5px] rounded">Systems</span>
@@ -212,7 +221,7 @@ const jsonLd = {
                   Share
                 </button>
               </div> */}
-            </a>
+                </a>
               </article>
             ))}
           </div>
