@@ -4,6 +4,7 @@ import { getImage } from "astro:assets";
 import DefaultLayout from "../components/layouts/DefaultLayout.astro";
 import BlogHeader from "../components/blog-header.astro";
 import { Temporal } from "temporal-polyfill";
+import Footer from "@/sections/footer.astro";
 
 export const prerender = true;
 
@@ -231,4 +232,5 @@ const jsonLd = {
       ))
     }
   </div>
+  <Footer />
 </DefaultLayout>
