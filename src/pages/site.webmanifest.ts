@@ -32,7 +32,7 @@ export const GET: APIRoute = async () => {
         type: "image/png",
       },
     ],
-    theme_color: "#292524",
+    theme_color: "#f5f2ff",
     background_color: "#f5f2ff",
     display: "standalone",
   });
