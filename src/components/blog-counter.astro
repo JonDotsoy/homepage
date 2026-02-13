@@ -1,4 +1,6 @@
 ---
+import { Temporal } from "temporal-polyfill";
+
 export const prerender = false;
 
 interface Props {
@@ -14,7 +16,7 @@ const visited = (await Astro.cookies.get(keyCache)?.boolean()) ?? false;
 if (!visited) {
   await Astro.cookies.set(keyCache, "true", {
     path: import.meta.url,
-    maxAge: 60 * 60 * 24 * 365, // 1 year
+    maxAge: Temporal.Duration.from({ weeks: 1 }).total("seconds"),
   });
 }
 
