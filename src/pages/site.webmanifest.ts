@@ -33,7 +33,7 @@ export const GET: APIRoute = async () => {
       },
     ],
     theme_color: "#292524",
-    background_color: "#f5f0ed",
+    background_color: "#f5f2ff",
     display: "standalone",
   });
 };
