@@ -3,20 +3,23 @@ import { Temporal } from "temporal-polyfill";
 
 export const prerender = false;
 
+const P1WDuration = Temporal.Duration.from({ weeks: 1 });
+const P1WSeconds = P1WDuration.total({ unit: 'second', relativeTo: Temporal.Now.plainDateTimeISO('UTC') });
+
 interface Props {
   articleId: string;
 }
 
 const { articleId } = Astro.props;
 
-const keyCache = `blog-post:${articleId}:v`;
+const keyCache = `blog-post${articleId}:v`;
 
 const visited = (await Astro.cookies.get(keyCache)?.boolean()) ?? false;
 
 if (!visited) {
   await Astro.cookies.set(keyCache, "true", {
     path: import.meta.url,
-    maxAge: Temporal.Duration.from({ weeks: 1 }).total("seconds"),
+    maxAge: P1WSeconds,
   });
 }
 
