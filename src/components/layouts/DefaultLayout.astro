@@ -1,6 +1,27 @@
 ---
 import "../../styles/global.css";
 import { ClientRouter } from "astro:transitions";
+import BrandPng from "../../assets/brand.png";
+import { getImage } from "astro:assets";
+
+const BrandPng180w = await getImage({
+  src: BrandPng,
+  width: 180,
+  height: 180,
+  format: "png",
+});
+const BrandPng32w = await getImage({
+  src: BrandPng,
+  width: 32,
+  height: 32,
+  format: "png",
+});
+const BrandPng16w = await getImage({
+  src: BrandPng,
+  width: 16,
+  height: 16,
+  format: "png",
+});
 
 interface Props {
   title?: string;
@@ -37,6 +58,10 @@ const { title = "Astro", description, keywords, lang } = Astro.props;
     {description && <meta name="description" content={description} />}
     {keywords && <meta name="keywords" content={keywords} />}
     <ClientRouter />
+    <link rel="apple-touch-icon" sizes="180x180" href={BrandPng180w.src} />
+    <link rel="icon" type="image/png" sizes="32x32" href={BrandPng32w.src} />
+    <link rel="icon" type="image/png" sizes="16x16" href={BrandPng16w.src} />
+    <link rel="manifest" href={`${Astro.site}site.webmanifest`} />
     <slot name="head" />
   </head>
   <body>
