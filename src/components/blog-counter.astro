@@ -9,7 +9,7 @@ interface Props {
 
 const { articleId } = Astro.props;
 
-const keyCache = `blog-post-${articleId}-visited`;
+const keyCache = `blog-post:${articleId}:v`;
 
 const visited = (await Astro.cookies.get(keyCache)?.boolean()) ?? false;
 
