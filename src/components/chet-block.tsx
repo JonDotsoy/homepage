@@ -79,13 +79,32 @@ export const ChatBlock = ({ url }: { url: URL }) => {
               </span>
             </div>
           </div>
-          <select name="chat" className="px-2 text-xs">
-            <option value="claude">Claude</option>
-            <option value="chat-gpt">ChatGPT</option>
-            {/* <option value="gemini">Gemini</option> */}
-            <option value="perplexity">Perplexity</option>
-          </select>
-          <button className="bg-gray-500/10 rounded-full p-2 scale-70">
+
+          <label className="transition-transform flex">
+            <div>
+              <span className="group-has-[option[value='gemini']:checked]/chat:hidden group-has-[option[value='claude']:checked]/chat:hidden group-has-[option[value='perplexity']:checked]/chat:hidden inline-flex items-center gap-1">
+                <OpenaiLogoIcon size={14} />
+              </span>
+              <span className="hidden group-has-[option[value='gemini']:checked]/chat:inline-flex items-center gap-1">
+                <GoogleGeminiIcon size={14} />
+              </span>
+              <span className="hidden group-has-[option[value='claude']:checked]/chat:inline-flex items-center gap-1">
+                <ClaudeIcon size={14} />
+              </span>
+              <span className="hidden group-has-[option[value='perplexity']:checked]/chat:inline-flex items-center gap-1">
+                <PerplexityIcon size={14} />
+              </span>
+            </div>
+
+            <select name="chat" className="px-2 text-xs w-0">
+              <option value="claude">Claude</option>
+              <option value="chat-gpt">ChatGPT</option>
+              {/* <option value="gemini">Gemini</option> */}
+              <option value="perplexity">Perplexity</option>
+            </select>
+          </label>
+
+          <button className="bg-gray-500/10 rounded-full p-2 scale-70 cursor-pointer transition-all hover:scale-100 hover:px-4">
             <ArrowUp className="w-8 h-8" />
           </button>
         </div>
