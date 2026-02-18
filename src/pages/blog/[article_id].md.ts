@@ -6,6 +6,11 @@ import { User, Eye, Calendar, Bot } from "lucide-react";
 import { Temporal } from "temporal-polyfill";
 import { ChatBlock } from "@/components/chet-block";
 import type { APIRoute } from "astro";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import Turndown from "turndown";
+
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
 
 export async function getStaticPaths() {
   const blogEntries = await getCollection("blog");
@@ -49,11 +54,35 @@ export const GET: APIRoute = async (Astro) => {
     Astro.site || Astro.url.origin,
   ).href;
 
+  const astroContainer = await AstroContainer.create({
+    renderers: [],
+    astroConfig: {
+      compressHTML: true,
+    },
+  });
+
+  const turndown = new Turndown({ headingStyle: "atx" })
+    .addRule("img-full", {
+      filter: "img",
+      replacement: (content, node) => {
+        const alt = node.getAttribute("alt") || "";
+        const src = node.getAttribute("src") || "";
+        return `![${alt}](${new URL(src, Astro.site || Astro.url.origin).href})`;
+      },
+    })
+    .addRule("link-full", {
+      filter: "a",
+      replacement: (content, node) => {
+        const href = node.getAttribute("href") || "";
+        return `[${content}](${new URL(href, Astro.site || Astro.url.origin).href})`;
+      },
+    });
+
   return new Response(
     [
       `> ## Articles Index\n`,
       `>\n`,
-      `> Fetch the [articles index](/blog/llms.txt) for a complete list of articles.\n`,
+      `> Fetch the [articles index](${new URL("/blog/llms.txt", Astro.site || Astro.url.origin).href}) for a complete list of articles.\n`,
       `> Use the index to navigate through all available articles.\n`,
       `>\n`,
       `> ## Document metadata\n`,
@@ -66,7 +95,8 @@ export const GET: APIRoute = async (Astro) => {
       `> - **Original URL**: ${originalUrl}\n`,
       `\n`,
       `# ${title}\n\n`,
-      entry.body,
+      // `${await astroContainer.renderToString(Content)}\n`,
+      `${turndown.turndown(await astroContainer.renderToString(Content))}\n`,
     ].join(""),
     {
       headers: { "Content-Type": "text/markdown; charset=utf-8" },
