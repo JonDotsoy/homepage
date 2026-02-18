@@ -64,12 +64,12 @@ Jonathan is a software developer with experience in fintech, working with TypeSc
 ## Open Source
 
 - [Skills](https://github.com/jondotsoy/skills): Reusable AI agent skills including runbook-generator and runbook-executor, compatible with Claude Code, GitHub Copilot, and Kiro.
-`
+`;
 
 export const GET: APIRoute = () => {
-    return new Response(getLlmFullTxt(), {
-        headers: {
-            "Content-Type": "text/plain",
-        },
-    });
-}
+  return new Response(getLlmFullTxt(), {
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+};

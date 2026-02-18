@@ -4,7 +4,10 @@ import { Temporal } from "temporal-polyfill";
 export const prerender = false;
 
 const P1WDuration = Temporal.Duration.from({ weeks: 1 });
-const P1WSeconds = P1WDuration.total({ unit: 'second', relativeTo: Temporal.Now.plainDateTimeISO('UTC') });
+const P1WSeconds = P1WDuration.total({
+  unit: "second",
+  relativeTo: Temporal.Now.plainDateTimeISO("UTC"),
+});
 
 interface Props {
   articleId: string;

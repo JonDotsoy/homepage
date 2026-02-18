@@ -23,12 +23,12 @@ Jonathan is a software developer with experience in fintech, working with TypeSc
 
 - [Homepage](${SITE}/): Full portfolio in Spanish
 - [Homepage (English)](${SITE}/en/): Full portfolio in English
-`
+`;
 
 export const GET: APIRoute = () => {
-    return new Response(getLlmTxt(), {
-        headers: {
-            "Content-Type": "text/plain",
-        },
-    });
-}
+  return new Response(getLlmTxt(), {
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+};
