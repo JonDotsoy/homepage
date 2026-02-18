@@ -15,7 +15,6 @@ export async function getStaticPaths() {
 }
 
 export const GET: APIRoute = async (Astro) => {
-
   const { article_id } = Astro.params;
   const entry = await getEntry("blog", article_id!);
 
@@ -45,18 +44,27 @@ export const GET: APIRoute = async (Astro) => {
       .href;
   }
 
-  return new Response([
-    `> ## Document metadata\n`,
-    `> - **Description**: ${description}\n`,
-    `> - **Author**: [${author.github}](https://github.com/${author.github})\n`,
-    `> - **Tags**: ${tags?.join(", ")??''}\n`,
-    `> - **Published Date**: ${publishedDate}\n`,
-    `> - **Language**: ${lang}\n`,
-    `> - **Cover Image**: ${coverImageUrl}\n`,
-    `\n`,
-    `# ${title}\n\n`,
-    entry.body,
-  ].join(''), {
-    headers: { "Content-Type": "text/markdown; charset=utf-8" }
-  });
-}
+  const originalUrl = new URL(
+    `/blog/${article_id}`,
+    Astro.site || Astro.url.origin,
+  ).href;
+
+  return new Response(
+    [
+      `> ## Document metadata\n`,
+      `> - **Description**: ${description}\n`,
+      `> - **Author**: [${author.github}](https://github.com/${author.github})\n`,
+      `> - **Tags**: ${tags?.join(", ") ?? ""}\n`,
+      `> - **Published Date**: ${publishedDate}\n`,
+      `> - **Language**: ${lang}\n`,
+      `> - **Cover Image**: ${coverImageUrl}\n`,
+      `> - **Original URL**: ${originalUrl}\n`,
+      `\n`,
+      `# ${title}\n\n`,
+      entry.body,
+    ].join(""),
+    {
+      headers: { "Content-Type": "text/markdown; charset=utf-8" },
+    },
+  );
+};
