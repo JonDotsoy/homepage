@@ -51,6 +51,11 @@ export const GET: APIRoute = async (Astro) => {
 
   return new Response(
     [
+      `> ## Articles Index\n`,
+      `>\n`,
+      `> Fetch the [articles index](/blog/llms.txt) for a complete list of articles.\n`,
+      `> Use the index to navigate through all available articles.\n`,
+      `>\n`,
       `> ## Document metadata\n`,
       `> - **Description**: ${description}\n`,
       `> - **Author**: [${author.github}](https://github.com/${author.github})\n`,
