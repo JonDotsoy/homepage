@@ -1,7 +1,21 @@
 import { ArrowUp } from "lucide-react";
 import { Claude, Gemini, Perplexity, OpenAI } from "@lobehub/icons";
+import { useEffect, useRef } from "react";
 
 export const ChatBlock = ({ url }: { url: URL }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const chatUrls: Record<string, string> = {
     "chat-gpt": "https://chatgpt.com/",
     gemini: "https://gemini.google.com/",
@@ -33,6 +47,7 @@ export const ChatBlock = ({ url }: { url: URL }) => {
         <div className="group/chat bottom-0 w-full md:w-100 md:focus-within:w-140 bg-gray-100/95 hover:bg-gray-100 focus-within:bg-gray-100 rounded-full flex items-center transition-all duration-300 border border-gray-200 md:border-0 md:shadow-sm md:not-focus-within:hover:scale-103 md:not-focus-within:hover:shadow-md">
           <div className="relative w-full">
             <input
+              ref={inputRef}
               type="text"
               name="query"
               placeholder=" "
