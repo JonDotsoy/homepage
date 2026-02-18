@@ -3,7 +3,7 @@ import { getCollection, getEntry, render } from "astro:content";
 import { getImage } from "astro:assets";
 import BlogLayout from "../../components/layouts/BlogLayout.astro";
 import BlogCounter from "@/components/blog-counter.astro";
-import { User, Eye, Calendar } from "lucide-react";
+import { User, Eye, Calendar, Bot } from "lucide-react";
 import { Temporal } from "temporal-polyfill";
 import { ChatBlock } from "@/components/chet-block";
 
@@ -107,7 +107,7 @@ const jsonLd = {
       </h1>
       <div class="text-muted-foreground mb-4">
         <!-- metadata -->
-        <p class="w-full text-sm flex flex-cols-3 gap-4 text-stone-800/60">
+        <p class="w-full text-sm flex flex-wrap gap-4 text-stone-800/60">
           <span class="font-semibold inline-flex items-center gap-1">
             <User size={14} />{author.github}
           </span>
@@ -146,6 +146,13 @@ const jsonLd = {
               }</span
             >
           </time>
+          <label
+            for="chat-input"
+            class="basis-full md:basis-auto inline-flex items-center gap-1 cursor-pointer hover:text-stone-800 transition-colors"
+          >
+            <Bot size={14} />
+            Preguntar al chat
+          </label>
         </p>
       </div>
       {

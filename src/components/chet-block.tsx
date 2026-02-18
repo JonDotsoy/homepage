@@ -44,13 +44,14 @@ export const ChatBlock = ({ url }: { url: URL }) => {
     <>
       <form
         action=""
-        className="md:fixed md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-50"
+        className="sticky top-0 z-50 md:fixed md:top-auto md:bottom-8 md:left-1/2 md:-translate-x-1/2"
         onSubmit={handleSubmit}
       >
         <div className="group/chat bottom-0 w-full md:w-100 md:focus-within:w-140 bg-gray-100/95 hover:bg-gray-100 focus-within:bg-gray-100 rounded-full flex items-center transition-all duration-300 border border-gray-200 md:border-0 md:shadow-sm md:not-focus-within:hover:scale-103 md:not-focus-within:hover:shadow-md">
           <div className="relative w-full">
             <input
               ref={inputRef}
+              id="chat-input"
               type="text"
               name="query"
               placeholder=" "
