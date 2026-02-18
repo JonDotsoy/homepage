@@ -148,12 +148,21 @@ const jsonLd = {
           </time>
           <label
             for="chat-input"
-            class="basis-full md:basis-auto inline-flex items-center gap-1 cursor-pointer hover:text-stone-800 transition-colors"
+            class="hidden md:inline-flex items-center gap-1 cursor-pointer hover:text-stone-800 transition-colors"
           >
             <Bot size={14} />
             Preguntar al chat
           </label>
         </p>
+      </div>
+      <div class="sticky top-0 z-40 py-2 bg-background md:hidden">
+        <label
+          for="chat-input"
+          class="inline-flex items-center gap-1 cursor-pointer text-sm text-stone-800/60 hover:text-stone-800 transition-colors"
+        >
+          <Bot size={14} />
+          Preguntar al chat
+        </label>
       </div>
       {
         tags && tags.length > 0 && (
@@ -170,7 +179,7 @@ const jsonLd = {
 
     <Content />
 
-    <ChatBlock url={Astro.url} client:only />
+    <ChatBlock url={Astro.url} client:load />
 
     <footer class="mt-12 pt-6 border-t border-border">
       <a

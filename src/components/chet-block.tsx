@@ -1,6 +1,9 @@
 import { ArrowUp } from "lucide-react";
-import { Claude, Gemini, Perplexity, OpenAI } from "@lobehub/icons";
 import { useEffect, useRef } from "react";
+import { OpenaiLogoIcon } from "./icons/openai-logo-icon";
+import { ClaudeIcon } from "./icons/cloude-icon";
+import { GoogleGeminiIcon } from "./icons/google-gemini-icon";
+import { PerplexityIcon } from "./icons/perplexity-icon";
 
 export const ChatBlock = ({ url }: { url: URL }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +47,7 @@ export const ChatBlock = ({ url }: { url: URL }) => {
     <>
       <form
         action=""
-        className="sticky top-0 z-50 md:fixed md:top-auto md:bottom-8 md:left-1/2 md:-translate-x-1/2"
+        className="md:fixed md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-50"
         onSubmit={handleSubmit}
       >
         <div className="group/chat bottom-0 w-full md:w-100 md:focus-within:w-140 bg-gray-100/95 hover:bg-gray-100 focus-within:bg-gray-100 rounded-full flex items-center transition-all duration-300 border border-gray-200 md:border-0 md:shadow-sm md:not-focus-within:hover:scale-103 md:not-focus-within:hover:shadow-md">
@@ -59,19 +62,19 @@ export const ChatBlock = ({ url }: { url: URL }) => {
             />
             <div className="absolute inset-y-0 left-4 hidden peer-placeholder-shown:flex items-center gap-1 pointer-events-none text-gray-400 text-sm">
               <span className="group-has-[option[value='gemini']:checked]/chat:hidden group-has-[option[value='claude']:checked]/chat:hidden group-has-[option[value='perplexity']:checked]/chat:hidden inline-flex items-center gap-1">
-                <OpenAI size={14} />
+                <OpenaiLogoIcon size={14} />
                 Pregunta a ChatGPT
               </span>
               <span className="hidden group-has-[option[value='gemini']:checked]/chat:inline-flex items-center gap-1">
-                <Gemini size={14} />
+                <GoogleGeminiIcon size={14} />
                 Pregunta a Gemini
               </span>
               <span className="hidden group-has-[option[value='claude']:checked]/chat:inline-flex items-center gap-1">
-                <Claude size={14} />
+                <ClaudeIcon size={14} />
                 Pregunta a Claude
               </span>
               <span className="hidden group-has-[option[value='perplexity']:checked]/chat:inline-flex items-center gap-1">
-                <Perplexity size={14} />
+                <PerplexityIcon size={14} />
                 Pregunta a Perplexity
               </span>
             </div>
