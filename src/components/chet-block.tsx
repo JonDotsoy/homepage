@@ -11,6 +11,9 @@ export const ChatBlock = ({ url }: { url: URL }) => {
         e.preventDefault();
         inputRef.current?.focus();
       }
+      if (e.key === "Escape") {
+        inputRef.current?.blur();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
