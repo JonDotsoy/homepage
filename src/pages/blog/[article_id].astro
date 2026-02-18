@@ -5,6 +5,7 @@ import BlogLayout from "../../components/layouts/BlogLayout.astro";
 import BlogCounter from "@/components/blog-counter.astro";
 import { User, Eye, Calendar } from "lucide-react";
 import { Temporal } from "temporal-polyfill";
+import { ChatBlock } from "@/components/chet-block";
 
 export async function getStaticPaths() {
   const blogEntries = await getCollection("blog");
@@ -161,6 +162,8 @@ const jsonLd = {
     </header>
 
     <Content />
+
+    <ChatBlock url={Astro.url} client:only />
 
     <footer class="mt-12 pt-6 border-t border-border">
       <a
