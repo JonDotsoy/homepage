@@ -20,7 +20,7 @@ export const ChatBlock = ({ url }: { url: URL }) => {
   }, []);
 
   const chatUrls: Record<string, string> = {
-    "chat-gpt": "https://chatgpt.com/",
+    "chat-gpt": "https://chatgpt.com/?openaicom_referred=true",
     gemini: "https://gemini.google.com/",
     claude: "https://claude.ai/",
     perplexity: "https://www.perplexity.ai/",
@@ -54,7 +54,7 @@ export const ChatBlock = ({ url }: { url: URL }) => {
               type="text"
               name="query"
               placeholder=" "
-              className="peer w-full px-4 border-none outline-none"
+              className="peer w-full px-4 border-none outline-none text-sm"
             />
             <div className="absolute inset-y-0 left-4 hidden peer-placeholder-shown:flex items-center gap-1 pointer-events-none text-gray-400 text-sm">
               <span className="group-has-[option[value='gemini']:checked]/chat:hidden group-has-[option[value='claude']:checked]/chat:hidden group-has-[option[value='perplexity']:checked]/chat:hidden inline-flex items-center gap-1">
