@@ -67,6 +67,7 @@ const { title = "Astro", description, keywords, lang, googleTagManagerEnabled = 
     <link rel="icon" type="image/png" sizes="16x16" href={BrandPng16w.src} />
     <link rel="manifest" href={`${Astro.site}site.webmanifest`} />
     <slot name="head" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href={`${Astro.site}rss.xml`} />
   </head>
   <body>
     {googleTagManagerEnabled && <>
