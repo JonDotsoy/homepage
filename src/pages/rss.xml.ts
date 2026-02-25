@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
+import data from "@/data/general.json";
 
 class XMLNode {
   constructor(
@@ -52,9 +53,9 @@ export const GET: APIRoute = async (Astro) => {
       x(
         "channel",
         null,
-        x("title", null, "W3Schools Home Page"),
-        x("link", null, "https://www.w3schools.com"),
-        x("description", null, "Free web building tutorials"),
+        x("title", null, data.seo.title),
+        x("link", null, new URL(`/`, Astro.site).toString()),
+        x("description", null, data.seo.description),
         ...sortedPosts.map((post) =>
           x(
             "item",
