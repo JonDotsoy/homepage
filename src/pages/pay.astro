@@ -1,0 +1,4 @@
+---
+const url = Astro.locals.runtime?.env?.FINTOC_URL ?? "https://fintoc.me/jondotsoy";
+return Astro.redirect(url, 302);
+---
