@@ -134,6 +134,69 @@ const $liveMetrics = createLiveResource<Metrics>((onMessage, onError) => {
   return () => source.close()
 })`;
 
+const infiniteScrollSnippet = `type Page<T> = { items: T[]; nextCursor: string | null }
+
+type FeedState<T> = {
+  items: T[]
+  cursor: string | null
+  hasMore: boolean
+  loading: boolean
+  error: unknown
+}
+
+function createFeedResource<T>(
+  fetchPage: (cursor: string | null, signal: AbortSignal) => Promise<Page<T>>,
+) {
+  const $feed = atom<FeedState<T>>({
+    items: [],
+    cursor: null,
+    hasMore: true,
+    loading: true,
+    error: null,
+  })
+  let controller: AbortController | null = null
+
+  function loadPage(cursor: string | null) {
+    controller?.abort()
+    controller = new AbortController()
+    const { signal } = controller
+    $feed.set({ ...$feed.get(), loading: true, error: null })
+
+    t(fetchPage(cursor, signal)).then(([ok, error, page]) => {
+      if (signal.aborted) return
+      const prev = $feed.get()
+      $feed.set(
+        ok
+          ? {
+              items: [...prev.items, ...page.items], // se concatena, no se reemplaza
+              cursor: page.nextCursor,
+              hasMore: page.nextCursor !== null,
+              loading: false,
+              error: null,
+            }
+          : { ...prev, loading: false, error },
+      )
+    })
+  }
+
+  onMount($feed, () => {
+    // un remount rápido no debería tirar los items ya acumulados
+    if ($feed.get().items.length === 0) loadPage(null)
+    return () => controller?.abort()
+  })
+
+  function loadMore() {
+    const { cursor, hasMore, loading } = $feed.get()
+    if (hasMore && !loading) loadPage(cursor)
+  }
+
+  return { $feed, loadMore }
+}
+
+const $feed = createFeedResource<Article>((cursor, signal) =>
+  fetch(\`/api/articles?cursor=\${cursor ?? ""}\`, { signal }).then((r) => r.json()),
+)`;
+
 const reactSnippet = `import { useStore } from '@nanostores/react'
 
 function useHome() {
@@ -244,7 +307,9 @@ $home.listen((state) => {
         También incluye <code>$liveMetrics</code>, un recurso que simula un{" "}
         <code>EventSource</code> (SSE): en vez de resolver una vez, empuja mensajes
         mientras está montado, y <code>onUnmount</code> cierra la conexión en vez
-        de abortar un fetch puntual.
+        de abortar un fetch puntual. Y <code>$feed</code>, una lista con scroll
+        infinito real: desplázate dentro de la lista para pedir la siguiente
+        página automáticamente.
       </p>
       <MyStateDemo client:load />
     </section>
@@ -336,6 +401,33 @@ $home.listen((state) => {
     </section>
 
     <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Infinite scroll: un store incremental
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Una lista paginada tampoco encaja en <code>Resource&lt;T&gt;</code>{" "}
+        tal cual: cada página no reemplaza el estado, lo <strong>acumula</strong
+        >. El "state para continuar la paginación" es el <code>cursor</code> que
+        trae cada respuesta — no un número de página que vos llevas aparte, sino
+        el que el servidor te devuelve para pedir la siguiente tanda.
+      </p>
+      <Code code={infiniteScrollSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Dos detalles que distinguen este store de los anteriores: primero, cada
+        página se concatena (<code>[...prev.items, ...page.items]</code>) en vez
+        de reemplazar el valor completo. Segundo, <code>onMount</code> solo pide
+        la primera página <em>si todavía no hay items</em> — así un remount rápido
+        (por ejemplo, volver a una lista que ya habías scrolleado) no descarta el
+        progreso ya cargado; simplemente retoma. <code>onUnmount</code> sigue cancelando
+        la página en curso con <code>AbortController</code>, igual que en el
+        ejemplo de arriba, pero sin tocar los items ya acumulados. La demo
+        simula un feed de 20 artículos en 4 páginas: móntala y desplázate dentro
+        de{" "}
+        <code>$feed</code> para ver la carga automática, o usa "Cargar más" directamente.
+      </p>
+    </section>
+
+    <section class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">Consumo</h2>
 
       <div class="mb-6">
@@ -375,6 +467,11 @@ $home.listen((state) => {
           Cancela el fetch en curso desde el <code>onUnmount</code> (lo que retorna
           <code>onMount</code>) con un <code>AbortController</code>, no solo con
           una bandera que ignore la respuesta.
+        </li>
+        <li>
+          Para listas paginadas usa un store que <em>acumule</em> items y guarde
+          el cursor de la última página, no un{" "}
+          <code>Resource&lt;T[]&gt;</code> que reemplaza el arreglo en cada fetch.
         </li>
         <li>
           Comparte recursos entre páginas con la variante atomizada cuando

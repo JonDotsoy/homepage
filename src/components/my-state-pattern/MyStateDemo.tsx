@@ -168,6 +168,140 @@ function createSseDemoStore(log: (text: string) => void): {
   };
 }
 
+const FEED_PAGE_SIZE = 5;
+const FEED_TOTAL_PAGES = 4;
+
+type FeedItem = { id: number; title: string };
+type FeedPage = { items: FeedItem[]; nextCursor: number | null };
+type FeedState = {
+  items: FeedItem[];
+  cursor: number | null;
+  hasMore: boolean;
+  loading: boolean;
+  error: unknown;
+};
+
+const IDLE_FEED: FeedState = {
+  items: [],
+  cursor: null,
+  hasMore: true,
+  loading: true,
+  error: null,
+};
+
+// Simula una API paginada: `cursor` identifica la página a pedir (null =
+// primera), y cada respuesta trae su propio `nextCursor` — el estado que
+// hay que guardar para poder seguir pidiendo "la siguiente" sin volver a
+// pedir lo ya cargado.
+function simulateFeedPage(
+  cursor: number | null,
+  config: Config,
+  signal: AbortSignal,
+): Promise<FeedPage> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (config.forceError) {
+        reject(new Error("No se pudo cargar la página"));
+        return;
+      }
+      const page = cursor ?? 0;
+      const start = page * FEED_PAGE_SIZE;
+      const items = Array.from({ length: FEED_PAGE_SIZE }, (_, i) => ({
+        id: start + i + 1,
+        title: `Artículo #${start + i + 1}`,
+      }));
+      const nextPage = page + 1;
+      resolve({
+        items,
+        nextCursor: nextPage < FEED_TOTAL_PAGES ? nextPage : null,
+      });
+    }, config.delayMs);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+}
+
+// A diferencia de Resource<T>, este store no reemplaza su valor en cada
+// respuesta: lo acumula (`items: [...prev.items, ...page.items]`). El
+// "state para continuar la paginación" es el cursor de la última página
+// resuelta, guardado junto a los items.
+function createFeedStore(log: (text: string) => void): {
+  $feed: WritableAtom<FeedState>;
+  config: Config;
+  loadMore: () => void;
+} {
+  const $feed = atom<FeedState>(IDLE_FEED);
+  const config: Config = { forceError: false, delayMs: 900 };
+  let controller: AbortController | null = null;
+
+  function loadPage(cursor: number | null, reason: string) {
+    controller?.abort();
+    const ownController = new AbortController();
+    controller = ownController;
+    const { signal } = ownController;
+
+    log(`[$feed] ${reason}`);
+    $feed.set({ ...$feed.get(), loading: true, error: null });
+
+    t(simulateFeedPage(cursor, config, signal)).then(([ok, error, page]) => {
+      if (signal.aborted) {
+        log("[$feed] fetch de página abortado, se descarta");
+        return;
+      }
+      if (!ok) {
+        $feed.set({ ...$feed.get(), loading: false, error });
+        log("[$feed] t() resolvió → ok:false");
+        return;
+      }
+      const prev = $feed.get();
+      $feed.set({
+        items: [...prev.items, ...page.items],
+        cursor: page.nextCursor,
+        hasMore: page.nextCursor !== null,
+        loading: false,
+        error: null,
+      });
+      log(`[$feed] t() resolvió → ok:true, +${page.items.length} items`);
+    });
+  }
+
+  onMount($feed, () => {
+    // Solo pide la primera página si todavía no hay nada: un remount
+    // rápido (desmontar y volver a montar antes del onStop) no debería
+    // tirar los items que ya se acumularon.
+    if ($feed.get().items.length === 0) {
+      loadPage(null, "onMount → sin items todavía, pide la primera página");
+    } else {
+      log("[$feed] onMount → ya había items, no repite la primera página");
+    }
+
+    return () => {
+      log("[$feed] onStop → aborta la página en curso, conserva los items");
+      controller?.abort();
+    };
+  });
+
+  return {
+    $feed,
+    config,
+    loadMore: () => {
+      const state = $feed.get();
+      if (!state.hasMore || state.loading) return;
+      loadPage(state.cursor, "cargar más → siguiente página con el cursor");
+    },
+  };
+}
+
 // Reading `store.get()` on a nanostores atom momentarily mounts it (even
 // without a lasting listener), which would trigger onMount's fetch as a
 // side effect of rendering. To keep "nobody is watching" truly inert
@@ -343,6 +477,110 @@ function SseCard({
   );
 }
 
+function FeedCard({
+  store,
+  config,
+  active,
+  onLoadMore,
+}: {
+  store: WritableAtom<FeedState>;
+  config: Config;
+  active: boolean;
+  onLoadMore: () => void;
+}) {
+  const state = useGatedValue<FeedState>(store, active, IDLE_FEED);
+  const [forceError, setForceError] = useState(config.forceError);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll real: observa el centinela al final de la lista y
+  // pide la siguiente página cuando entra en el viewport del contenedor.
+  useEffect(() => {
+    if (!active || !state.hasMore || state.loading) return;
+    const root = containerRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onLoadMore();
+      },
+      { root, rootMargin: "40px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [active, state.hasMore, state.loading, onLoadMore]);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <code className="text-sm font-semibold text-stone-800">$feed</code>
+        {state.error ? (
+          <StatusPill state={[false, state.error, null]} />
+        ) : state.loading ? (
+          <StatusPill state={[true, null, null]} />
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            {state.items.length} items
+          </span>
+        )}
+      </div>
+
+      <div
+        ref={containerRef}
+        className="h-40 overflow-y-auto rounded-md border border-stone-100 bg-stone-50 text-[11px] text-stone-700"
+      >
+        {state.items.map((item) => (
+          <div key={item.id} className="border-b border-stone-100 px-2 py-1.5">
+            {item.title}
+          </div>
+        ))}
+        {state.hasMore ? (
+          <div
+            ref={sentinelRef}
+            className="px-2 py-3 text-center text-stone-400"
+          >
+            {state.loading ? "Cargando más…" : "— desplázate para cargar más —"}
+          </div>
+        ) : (
+          <div className="px-2 py-3 text-center text-stone-400">
+            — fin del feed —
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <label className="flex items-center gap-1.5 text-stone-600">
+          <input
+            type="checkbox"
+            checked={forceError}
+            onChange={() => {
+              config.forceError = !config.forceError;
+              setForceError(config.forceError);
+            }}
+            className="size-3.5"
+          />
+          forzar error de página
+        </label>
+        <button
+          onClick={onLoadMore}
+          disabled={!active || !state.hasMore || state.loading}
+          className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Cargar más
+        </button>
+      </div>
+
+      {state.error ? (
+        <p className="text-[11px] text-red-600">
+          {String((state.error as Error)?.message ?? state.error)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MyStateDemo() {
   const [active, setActive] = useState(false);
   const [log, setLog] = useState<Entry[]>([]);
@@ -362,7 +600,7 @@ export default function MyStateDemo() {
     ]);
   };
 
-  const { stores, retries, configs, $home, sse } = useMemo(() => {
+  const { stores, retries, configs, $home, sse, feed } = useMemo(() => {
     const configs: Record<string, Config> = {};
     const stores: Record<string, WritableAtom<Resource<unknown>>> = {};
     const retries: Record<string, () => void> = {};
@@ -385,7 +623,10 @@ export default function MyStateDemo() {
     // $liveMetrics no entra a $home: no es un recurso de una sola
     // resolución, pero comparte el mismo contrato onMount/onUnmount.
     const sse = createSseDemoStore(pushLog);
-    return { stores, retries, configs, $home, sse };
+    // $feed tampoco entra a $home: es un store incremental (paginado),
+    // no un Resource<T> de una sola resolución.
+    const feed = createFeedStore(pushLog);
+    return { stores, retries, configs, $home, sse, feed };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation]);
 
@@ -476,6 +717,22 @@ export default function MyStateDemo() {
             config={sse.config}
             active={active}
             onReconnect={sse.reconnect}
+          />
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-1 text-xs font-medium text-stone-500">
+          Infinite scroll: store incremental, el cursor de la última página es
+          el estado que permite continuar la paginación
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <FeedCard
+            key={`feed-${generation}`}
+            store={feed.$feed}
+            config={feed.config}
+            active={active}
+            onLoadMore={feed.loadMore}
           />
         </div>
       </div>
