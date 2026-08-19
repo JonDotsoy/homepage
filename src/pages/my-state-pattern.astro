@@ -81,6 +81,31 @@ const $home = computed(
   (session, recentArticles, serverHealth) => ({ session, recentArticles, serverHealth }),
 )`;
 
+const cancellationSnippet = `function createResource<T>(fetcher: (signal: AbortSignal) => Promise<T>) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    const controller = new AbortController()
+
+    t(fetcher(controller.signal)).then(([, error, data]) => {
+      // el controller ya fue abortado: no pises un estado más nuevo
+      // con la respuesta de un fetch que ya no nos interesa
+      if (controller.signal.aborted) return
+      $resource.set([false, error, data])
+    })
+
+    // esto es el "onUnmount": nanostores lo llama cuando el último
+    // subscriptor se va (con ~1s de gracia por si vuelve a montar)
+    return () => controller.abort()
+  })
+
+  return $resource
+}
+
+const $session = createResource((signal) =>
+  fetch('/api/session', { signal }).then((r) => r.json()),
+)`;
+
 const reactSnippet = `import { useStore } from '@nanostores/react'
 
 function useHome() {
@@ -186,7 +211,8 @@ $home.listen((state) => {
         con tres recursos simulados: <code>session</code>,{" "}
         <code>recentArticles</code> y <code>serverHealth</code>. Móntalo para
         ver el <code>onMount</code> disparar los fetch, fuerza un error en algún
-        recurso, o desmóntalo para ver la limpieza.
+        recurso, o desmóntalo para ver el <code>onUnmount</code> abortando el fetch
+        en curso con <code>AbortController</code> (mira el registro de actividad).
       </p>
       <MyStateDemo client:load />
     </section>
@@ -219,6 +245,35 @@ $home.listen((state) => {
         </p>
         <Code code={atomizedSnippet} lang="ts" theme="github-dark" />
       </div>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Cancelar el fetch en curso
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        <code>onMount</code> puede devolver una función: nanostores la registra como
+        <strong>onUnmount</strong> y la ejecuta cuando el último subscriptor se va
+        (con un pequeño margen para no cancelar por un remount inmediato). Ese es
+        el lugar correcto para cancelar cualquier petición en curso: crea el <code
+          >AbortController</code
+        >{" "}
+        dentro del propio <code>onMount</code>, pásale su <code>signal</code>{
+          " "
+        }
+        al fetcher, y llama <code>controller.abort()</code> en el cleanup.
+      </p>
+      <Code code={cancellationSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Al abortar, <code>fetch</code> rechaza la promesa con un{" "}
+        <code>AbortError</code>, que <code>t</code> captura igual que cualquier otro
+        error. Por eso conviene revisar{" "}
+        <code>signal.aborted</code> antes de aplicar el resultado: evita que la respuesta
+        de un fetch ya cancelado sobrescriba un estado más reciente (por ejemplo,
+        el de un reintento posterior). La demo de más arriba implementa exactamente
+        este patrón — desmóntala mientras un recurso está cargando y revisa el registro
+        de actividad.
+      </p>
     </section>
 
     <section class="mb-12">
@@ -258,8 +313,9 @@ $home.listen((state) => {
           Tipa la tupla de estado y desestructura con nombres para legibilidad.
         </li>
         <li>
-          Considera cancelar el fetch en curso si el store se desmonta antes de
-          que termine.
+          Cancela el fetch en curso desde el <code>onUnmount</code> (lo que retorna
+          <code>onMount</code>) con un <code>AbortController</code>, no solo con
+          una bandera que ignore la respuesta.
         </li>
         <li>
           Comparte recursos entre páginas con la variante atomizada cuando

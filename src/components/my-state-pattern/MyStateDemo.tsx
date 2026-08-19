@@ -33,12 +33,31 @@ const RESOURCE_DEFS: ResourceDef[] = [
   { key: "serverHealth", sample: { status: "ok", latencyMs: 42 } },
 ];
 
-function simulate(def: ResourceDef, config: Config): Promise<unknown> {
+// Simula fetch(url, { signal }): si el signal aborta antes de que el
+// timer dispare, rechaza con un AbortError real y limpia el timer, igual
+// que haría el navegador con una petición de red cancelada de verdad.
+function simulate(
+  def: ResourceDef,
+  config: Config,
+  signal: AbortSignal,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
       if (config.forceError) reject(new Error(`No se pudo obtener ${def.key}`));
       else resolve(def.sample);
     }, config.delayMs);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
   });
 }
 
@@ -46,27 +65,46 @@ function createDemoStore(
   def: ResourceDef,
   config: Config,
   log: (text: string) => void,
-): WritableAtom<Resource<unknown>> {
+): { $resource: WritableAtom<Resource<unknown>>; retry: () => void } {
   const $resource = atom<Resource<unknown>>([true, null, null]);
+  let controller: AbortController | null = null;
 
-  onMount($resource, () => {
-    let cancelled = false;
-    log(`[$${def.key}] onMount → nadie escuchaba, ahora sí: fetch()`);
+  // Un único punto de entrada para disparar el fetch, usado tanto por
+  // onMount como por el botón "Reintentar": aborta cualquier petición
+  // anterior antes de empezar una nueva, así nunca hay dos en carrera.
+  function run(reason: string) {
+    controller?.abort();
+    const ownController = new AbortController();
+    controller = ownController;
+    const { signal } = ownController;
+
+    log(`[$${def.key}] ${reason}`);
     $resource.set([true, null, null]);
 
-    t(simulate(def, config)).then(([ok, error, data]) => {
-      if (cancelled) return;
+    t(simulate(def, config, signal)).then(([ok, error, data]) => {
+      if (signal.aborted) {
+        log(`[$${def.key}] fetch abortado, se descarta la respuesta`);
+        return;
+      }
       $resource.set([false, error, data as unknown]);
       log(`[$${def.key}] t() resolvió → ok:${ok}`);
     });
+  }
 
+  onMount($resource, () => {
+    run("onMount → nadie escuchaba, ahora sí: fetch()");
+
+    // Esto es el "onUnmount": nanostores llama esta función cuando el
+    // último subscriptor se va (con ~1s de gracia para evitar abortar
+    // por un remount rápido). Es el lugar correcto para cancelar
+    // cualquier petición en curso vía AbortController.
     return () => {
-      cancelled = true;
-      log(`[$${def.key}] onStop → último subscriptor se fue, limpiando`);
+      log(`[$${def.key}] onStop → controller.abort() del fetch en curso`);
+      controller?.abort();
     };
   });
 
-  return $resource;
+  return { $resource, retry: () => run("reintento manual") };
 }
 
 // Reading `store.get()` on a nanostores atom momentarily mounts it (even
@@ -118,13 +156,13 @@ function ResourceCard({
   store,
   config,
   active,
-  log,
+  onRetry,
 }: {
   def: ResourceDef;
   store: WritableAtom<Resource<unknown>>;
   config: Config;
   active: boolean;
-  log: (text: string) => void;
+  onRetry: () => void;
 }) {
   const state = useGatedValue<Resource<unknown>>(store, active, [
     true,
@@ -163,14 +201,7 @@ function ResourceCard({
           forzar error
         </label>
         <button
-          onClick={() => {
-            store.set([true, null, null]);
-            log(`[$${def.key}] reintento manual`);
-            t(simulate(def, config)).then(([ok, error, data]) => {
-              store.set([false, error, data as unknown]);
-              log(`[$${def.key}] t() resolvió → ok:${ok}`);
-            });
-          }}
+          onClick={onRetry}
           disabled={!active}
           className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -200,20 +231,27 @@ export default function MyStateDemo() {
     ]);
   };
 
-  const { stores, configs, $home } = useMemo(() => {
+  const { stores, retries, configs, $home } = useMemo(() => {
     const configs: Record<string, Config> = {};
     const stores: Record<string, WritableAtom<Resource<unknown>>> = {};
+    const retries: Record<string, () => void> = {};
     for (const def of RESOURCE_DEFS) {
-      const config: Config = { forceError: false, delayMs: 900 };
+      // nanostores espera ~1s (STORE_UNMOUNT_DELAY) tras el último
+      // unsubscribe antes de llamar el onUnmount; el delay simulado debe
+      // ser mayor a eso para que desmontar durante la carga demuestre un
+      // abort real y no una simple carrera ganada por el fetch.
+      const config: Config = { forceError: false, delayMs: 2200 };
       configs[def.key] = config;
-      stores[def.key] = createDemoStore(def, config, pushLog);
+      const demoStore = createDemoStore(def, config, pushLog);
+      stores[def.key] = demoStore.$resource;
+      retries[def.key] = demoStore.retry;
     }
     const $home = computed(
       RESOURCE_DEFS.map((d) => stores[d.key]),
       (...states) =>
         Object.fromEntries(RESOURCE_DEFS.map((d, i) => [d.key, states[i]])),
     );
-    return { stores, configs, $home };
+    return { stores, retries, configs, $home };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation]);
 
@@ -287,7 +325,7 @@ export default function MyStateDemo() {
             store={stores[def.key]}
             config={configs[def.key]}
             active={active}
-            log={pushLog}
+            onRetry={retries[def.key]}
           />
         ))}
       </div>
