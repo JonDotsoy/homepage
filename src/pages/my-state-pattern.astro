@@ -1,0 +1,277 @@
+---
+import { Code } from "astro:components";
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import BlogHeader from "@/components/blog-header.astro";
+import Footer from "@/sections/footer.astro";
+import MyStateDemo from "@/components/my-state-pattern/MyStateDemo.tsx";
+
+export const prerender = true;
+
+const pageUrl = new URL("/my-state-pattern", Astro.site || Astro.url.origin)
+  .href;
+
+const resourceTypeSnippet = `type Resource<T> = [loading: boolean, error: unknown, data: T | null]
+
+type HomeState = {
+  session: Resource<SessionData>
+  recentArticles: Resource<Article[]>
+  serverHealth: Resource<HealthData>
+}`;
+
+const tHelperSnippet = `const t = async <T>(
+  promise: Promise<T>,
+): Promise<[ok: true, error: null, data: T] | [ok: false, error: unknown, data: null]> => {
+  try {
+    const data = await promise
+    return [true, null, data]
+  } catch (error) {
+    return [false, error, null]
+  }
+}`;
+
+const monolithicSnippet = `import { atom, onMount } from 'nanostores'
+
+const $home = atom<HomeState>({
+  session: [true, null, null],
+  recentArticles: [true, null, null],
+  serverHealth: [true, null, null],
+})
+
+onMount($home, () => {
+  fetchSession()
+  fetchRecentArticles()
+  fetchServerHealth()
+
+  async function fetchSession() {
+    const [, error, data] = await t(fetch('/api/session').then((r) => r.json()))
+    $home.set({ ...$home.get(), session: [false, error, data] })
+  }
+
+  async function fetchRecentArticles() {
+    const [, error, data] = await t(fetch('/api/articles/recent').then((r) => r.json()))
+    $home.set({ ...$home.get(), recentArticles: [false, error, data] })
+  }
+
+  async function fetchServerHealth() {
+    const [, error, data] = await t(fetch('/api/health').then((r) => r.json()))
+    $home.set({ ...$home.get(), serverHealth: [false, error, data] })
+  }
+})`;
+
+const atomizedSnippet = `import { atom, onMount, computed } from 'nanostores'
+
+function createResource<T>(fetcher: () => Promise<T>) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    t(fetcher()).then(([, error, data]) => {
+      $resource.set([false, error, data])
+    })
+  })
+
+  return $resource
+}
+
+const $session = createResource(() => fetch('/api/session').then((r) => r.json()))
+const $recentArticles = createResource(() => fetch('/api/articles/recent').then((r) => r.json()))
+const $serverHealth = createResource(() => fetch('/api/health').then((r) => r.json()))
+
+const $home = computed(
+  [$session, $recentArticles, $serverHealth],
+  (session, recentArticles, serverHealth) => ({ session, recentArticles, serverHealth }),
+)`;
+
+const reactSnippet = `import { useStore } from '@nanostores/react'
+
+function useHome() {
+  return useStore($home)
+}
+
+function HomePage() {
+  const { session, recentArticles, serverHealth } = useHome()
+  const [sessionLoading, sessionError, sessionData] = session
+
+  if (sessionLoading) return <Spinner />
+  if (sessionError) return <ErrorBanner error={sessionError} />
+
+  return (
+    <div>
+      <UserBadge session={sessionData} />
+      <RecentArticlesList state={recentArticles} />
+      <ServerHealthIndicator state={serverHealth} />
+    </div>
+  )
+}`;
+
+const vanillaSnippet = `// subscribe: dispara inmediatamente con el valor actual, y luego con cada cambio
+$home.subscribe((state) => {
+  render(state)
+})
+
+// listen: solo dispara con cambios futuros, no con el valor actual
+$home.listen((state) => {
+  console.log('state changed', state)
+})`;
+---
+
+<DefaultLayout
+  title="my-state pattern — demo interactiva | Jonathan Delgado"
+  description="Demo interactiva del patrón my-state: modela el estado de una página como un store de nanostores compuesto por recursos [loading, error, data]."
+  lang="es"
+>
+  <Fragment slot="head">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content="my-state pattern — demo interactiva" />
+    <meta
+      property="og:description"
+      content="Demo interactiva del patrón my-state con nanostores: tuplas [loading, error, data], el helper t() y la pereza de onMount."
+    />
+    <link rel="canonical" href={pageUrl} />
+  </Fragment>
+
+  <BlogHeader />
+
+  <main class="container mx-auto px-4 py-12 max-w-3xl">
+    <header class="mb-12">
+      <p class="text-sm font-medium text-stone-500 mb-2">Patrón · nanostores</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-stone-900 mb-4">
+        my-state: un patrón para gestionar el estado de tus páginas
+      </h1>
+      <p class="text-stone-600 leading-relaxed">
+        Modela el estado de una página como <strong
+          >un único store compuesto por recurso</strong
+        >, donde cada recurso remoto sigue siempre la misma forma: una tupla <code
+          >[loading, error, data]</code
+        >. Esta página resume la idea y trae una demo interactiva que corre el
+        patrón de verdad, con <a
+          href="https://github.com/nanostores/nanostores"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline hover:text-stone-900">nanostores</a
+        >.
+      </p>
+    </header>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        La tupla de estado
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Cada recurso remoto se representa con el mismo tipo, y el estado de la
+        página agrupa una tupla por cada sección de información que necesita:
+      </p>
+      <Code code={resourceTypeSnippet} lang="ts" theme="github-dark" />
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        El helper <code>t</code>: adiós al try/catch
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        <code>t</code> envuelve cualquier promesa en una tupla{" "}
+        <code>[ok, error, data]</code> tipada como unión discriminada, así TypeScript
+        acota el tipo de <code>data</code> según el valor de{" "}
+        <code>ok</code>, sin <code>as</code> ni chequeos extra.
+      </p>
+      <Code code={tHelperSnippet} lang="ts" theme="github-dark" />
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Pruébalo: el patrón corriendo en vivo
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        La demo de abajo usa un store real de nanostores (variante atomizada)
+        con tres recursos simulados: <code>session</code>,{" "}
+        <code>recentArticles</code> y <code>serverHealth</code>. Móntalo para
+        ver el <code>onMount</code> disparar los fetch, fuerza un error en algún
+        recurso, o desmóntalo para ver la limpieza.
+      </p>
+      <MyStateDemo client:load />
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Dos formas de implementarlo
+      </h2>
+
+      <div class="mb-6">
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Monolítico: un atom, un <code>onMount</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Ideal cuando la página es simple y no necesitas reutilizar la lógica
+          de fetch en otra parte de la app.
+        </p>
+        <Code code={monolithicSnippet} lang="ts" theme="github-dark" />
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Atomizado: un recurso, un atom, compuestos con <code>computed</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Cuando varias páginas comparten recursos (como <code>session</code>),
+          cada uno vive en su propio store reutilizable y se compone con{" "}
+          <code>computed</code>, que propaga la suscripción de forma transitiva:
+          la demo de arriba usa esta variante.
+        </p>
+        <Code code={atomizedSnippet} lang="ts" theme="github-dark" />
+      </div>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">Consumo</h2>
+
+      <div class="mb-6">
+        <h3 class="text-base font-semibold text-stone-800 mb-2">React</h3>
+        <Code code={reactSnippet} lang="tsx" theme="github-dark" />
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-stone-800 mb-2">JS vanilla</h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Usa <code>subscribe</code> si necesitas pintar el estado inicial (aunque
+          sea "cargando"); usa <code>listen</code> si solo te interesa reaccionar
+          a cambios posteriores.
+        </p>
+        <Code code={vanillaSnippet} lang="ts" theme="github-dark" />
+      </div>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Buenas prácticas
+      </h2>
+      <ul
+        class="list-disc list-inside space-y-2 text-stone-600 leading-relaxed"
+      >
+        <li>
+          Nombra los stores por página o feature (<code>$home</code>,{" "}
+          <code>$profile</code>, <code>$checkout</code>), no genéricamente.
+        </li>
+        <li>
+          Nunca mutes el objeto de estado: siempre <code>set</code> con uno nuevo.
+        </li>
+        <li>
+          Tipa la tupla de estado y desestructura con nombres para legibilidad.
+        </li>
+        <li>
+          Considera cancelar el fetch en curso si el store se desmonta antes de
+          que termine.
+        </li>
+        <li>
+          Comparte recursos entre páginas con la variante atomizada cuando
+          detectes duplicación.
+        </li>
+        <li>
+          Usa <code>t</code> para resolver promesas en cualquier punto de la app,
+          no solo dentro de <code>onMount</code>.
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <Footer />
+</DefaultLayout>
