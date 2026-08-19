@@ -271,6 +271,175 @@ $home.listen((state) => {
 
     <section class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Entidades del patrón
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Un mapa rápido de las piezas que aparecen en esta página, de la más
+        pequeña (una tupla) a la más compuesta (un store por página), con las
+        dos variantes que agregan un contrato distinto: cancelación, streaming y
+        paginación.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-stone-200">
+        <table class="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-stone-200 bg-stone-50 text-left">
+              <th class="px-4 py-2 font-semibold text-stone-800">Entidad</th>
+              <th class="px-4 py-2 font-semibold text-stone-800">Forma</th>
+              <th class="px-4 py-2 font-semibold text-stone-800">Rol</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-100 text-stone-600">
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#resource" class="font-medium text-stone-900 underline"
+                  ><code>Resource&lt;T&gt;</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>[loading, error, data]</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                La unidad atómica de estado: cualquier recurso remoto de una
+                sola resolución sigue siempre esta forma.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#t-helper" class="font-medium text-stone-900 underline"
+                  ><code>t(promise)</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>Promise&lt;T&gt; → [ok, error, data]</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Adapta cualquier promesa a la forma que espera un{" "}
+                <code>Resource&lt;T&gt;</code>, sin <code>try/catch</code>{" "}
+                repetido y con <code>data</code> tipada según <code>ok</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>$resource</code> (atom)</a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom&lt;Resource&lt;T&gt;&gt;([true, null, null])</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El store nanostores de un recurso individual: nace en{" "}
+                <code>loading</code> y se actualiza con <code>set</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>onMount</code> / <code>onUnmount</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>onMount($store, () =&gt; cleanup)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El ciclo de vida completo: <code>onMount</code> corre al primer subscriptor
+                y dispara el fetch/stream/conexión; lo que retorna (el <strong
+                  >onUnmount</strong
+                >) corre al último subscriptor, con ~1s de gracia.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#cancelacion"
+                  class="font-medium text-stone-900 underline"
+                  ><code>AbortController</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>signal</code> pasado al fetcher
+              </td>
+              <td class="px-4 py-3 align-top">
+                Cancela lo que esté en curso desde el <code>onUnmount</code>: un
+                fetch, un reintento, o la página en curso de un feed.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>computed</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>computed([$a, $b, ...], combiner)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Compone varios <code>$resource</code> en un store derivado, propagando
+                la suscripción de forma transitiva a cada uno.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#consumo" class="font-medium text-stone-900 underline"
+                  ><code>$home</code> / <code>HomeState</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>{"{"} session, recentArticles, ... {"}"}</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El estado completo de una página: agrupa sus recursos bajo un
+                solo store, consumible con <code>useStore</code>{" "}
+                (React) o <code>subscribe</code>/<code>listen</code>{" "}
+                (vanilla).
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#sse" class="font-medium text-stone-900 underline"
+                  >Recurso en vivo (SSE)</a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>onMessage / onError</code> repetidos
+              </td>
+              <td class="px-4 py-3 align-top">
+                Variante que llama <code>$resource.set(...)</code> muchas veces mientras
+                la conexión está abierta, en vez de resolver una promesa una sola
+                vez; el cleanup cierra la conexión (<code>close()</code>) en vez
+                de abortar un fetch.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#infinite-scroll"
+                  class="font-medium text-stone-900 underline"
+                  ><code>FeedState&lt;T&gt;</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>{"{"} items, cursor, hasMore, loading, error {"}"}</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Variante incremental para listas paginadas: cada página se
+                concatena en vez de reemplazar el valor, y el{" "}
+                <code>cursor</code> es el state que permite continuar la paginación.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="resource" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
         La tupla de estado
       </h2>
       <p class="text-stone-600 leading-relaxed mb-4">
@@ -280,7 +449,7 @@ $home.listen((state) => {
       <Code code={resourceTypeSnippet} lang="ts" theme="github-dark" />
     </section>
 
-    <section class="mb-12">
+    <section id="t-helper" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         El helper <code>t</code>: adiós al try/catch
       </h2>
@@ -293,7 +462,7 @@ $home.listen((state) => {
       <Code code={tHelperSnippet} lang="ts" theme="github-dark" />
     </section>
 
-    <section class="mb-12">
+    <section id="demo" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Pruébalo: el patrón corriendo en vivo
       </h2>
@@ -314,7 +483,7 @@ $home.listen((state) => {
       <MyStateDemo client:load />
     </section>
 
-    <section class="mb-12">
+    <section id="implementaciones" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Dos formas de implementarlo
       </h2>
@@ -344,7 +513,7 @@ $home.listen((state) => {
       </div>
     </section>
 
-    <section class="mb-12">
+    <section id="cancelacion" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Cancelar el fetch en curso
       </h2>
@@ -373,7 +542,7 @@ $home.listen((state) => {
       </p>
     </section>
 
-    <section class="mb-12">
+    <section id="sse" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Streaming con SSE: un recurso que no se resuelve una sola vez
       </h2>
@@ -400,7 +569,7 @@ $home.listen((state) => {
       </p>
     </section>
 
-    <section class="mb-12">
+    <section id="infinite-scroll" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Infinite scroll: un store incremental
       </h2>
@@ -427,7 +596,7 @@ $home.listen((state) => {
       </p>
     </section>
 
-    <section class="mb-12">
+    <section id="consumo" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">Consumo</h2>
 
       <div class="mb-6">
@@ -446,7 +615,7 @@ $home.listen((state) => {
       </div>
     </section>
 
-    <section class="mb-12">
+    <section id="buenas-practicas" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
         Buenas prácticas
       </h2>
