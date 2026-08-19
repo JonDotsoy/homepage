@@ -347,6 +347,99 @@ function createImageParamsStore(): {
   return { $params, $imageUrl };
 }
 
+type SearchItem = { id: number; title: string };
+
+const SEARCH_CATALOG: SearchItem[] = [
+  { id: 1, title: "my-state pattern" },
+  { id: 2, title: "nanostores" },
+  { id: 3, title: "onMount / onUnmount" },
+  { id: 4, title: "AbortController" },
+  { id: 5, title: "EventSource (SSE)" },
+  { id: 6, title: "computed" },
+  { id: 7, title: "infinite scroll" },
+  { id: 8, title: "cursor de paginación" },
+];
+
+// Simula un endpoint de búsqueda: filtra el catálogo local tras un delay,
+// y respeta cancelación real vía AbortSignal, igual que un fetch de verdad.
+function simulateSearch(
+  query: string,
+  signal: AbortSignal,
+): Promise<SearchItem[]> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      const q = query.trim().toLowerCase();
+      resolve(
+        q
+          ? SEARCH_CATALOG.filter((item) =>
+              item.title.toLowerCase().includes(q),
+            )
+          : SEARCH_CATALOG,
+      );
+    }, 500);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+}
+
+// Variante de "parámetros reactivos" que sí pide algo remoto: dos stores
+// separados. $params guarda lo que el usuario escribe, sin lógica propia.
+// $search es el que tiene onMount: al montarse, se subscribe a $params y
+// dispara el fetch correspondiente — y vuelve a hacerlo cada vez que
+// $params cambia, cancelando el fetch anterior primero.
+function createSearchStore(log: (text: string) => void): {
+  $params: WritableAtom<string>;
+  $search: WritableAtom<Resource<SearchItem[]>>;
+} {
+  const $params = atom<string>("");
+  const $search = atom<Resource<SearchItem[]>>([true, null, null]);
+  let controller: AbortController | null = null;
+
+  onMount($search, () => {
+    log("onMount → subscribe a $params");
+
+    // subscribe (a diferencia de listen) dispara también con el valor
+    // ACTUAL de $params, así el primer fetch sale de inmediato al montar,
+    // igual que cualquier otro recurso de la página — y sigue disparando
+    // con cada cambio posterior.
+    const unsubscribe = $params.subscribe((query) => {
+      controller?.abort();
+      const ownController = new AbortController();
+      controller = ownController;
+      $search.set([true, null, null]);
+
+      t(simulateSearch(query, ownController.signal)).then(
+        ([ok, error, data]) => {
+          if (ownController.signal.aborted) {
+            log("fetch abortado (cambió $params antes de resolver)");
+            return;
+          }
+          $search.set(ok ? [false, null, data] : [false, error, null]);
+          log(`t() resolvió → ok:${ok}`);
+        },
+      );
+    });
+
+    return () => {
+      log("onStop → unsubscribe de $params, aborta el fetch en curso");
+      unsubscribe();
+      controller?.abort();
+    };
+  });
+
+  return { $params, $search };
+}
+
 // A diferencia de useGatedValue, este store no tiene onMount ni efectos
 // secundarios que activar: leer .get() en cualquier momento es inofensivo,
 // así que basta con un subscribe normal (lo mismo que hace useStore de
@@ -876,6 +969,107 @@ function ImageParamsCard() {
   );
 }
 
+function SearchCard() {
+  const [active, setActive] = useState(false);
+  const { log, push, logRef } = useCardLog();
+
+  const { $params, $search } = useMemo(
+    () => createSearchStore(push),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [loading, error, data] = useGatedValue<Resource<SearchItem[]>>(
+    $search,
+    active,
+    [true, null, null],
+  );
+  const [text, setText] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleToggle = () => {
+    setActive((prev) => {
+      const next = !prev;
+      push(
+        next
+          ? "subscribe() → primer subscriptor, se activa onMount"
+          : "unsubscribe → sin subscriptores, se agenda onStop",
+      );
+      return next;
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <code className="text-sm font-semibold text-stone-800">$search</code>
+        <StatusPill state={[loading, error, data]} />
+      </div>
+
+      <button
+        onClick={handleToggle}
+        className={
+          "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors " +
+          (active
+            ? "bg-stone-900 text-white hover:bg-stone-700"
+            : "bg-emerald-600 text-white hover:bg-emerald-500")
+        }
+      >
+        {active ? "Desmontar (unsubscribe)" : "Montar (subscribe)"}
+      </button>
+
+      <label className="flex flex-col gap-1 text-xs text-stone-600">
+        $params (texto)
+        <input
+          type="text"
+          value={text}
+          placeholder="onMount, computed, cursor…"
+          onChange={(event) => {
+            const value = event.target.value;
+            setText(value);
+            // Solo escribe en $params (y por lo tanto, si $search está
+            // montado, cancela el fetch en curso y dispara uno nuevo)
+            // 300ms después del último tecleo.
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => {
+              $params.set(value);
+            }, 300);
+          }}
+          className="rounded-md border border-stone-300 px-2 py-1 text-xs"
+        />
+      </label>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Último estado ({data?.length ?? 0} resultados)
+        </p>
+        <div className="h-24 overflow-y-auto rounded-md border border-stone-100 bg-stone-50 text-[11px] text-stone-700">
+          {data?.length ? (
+            data.map((item) => (
+              <div
+                key={item.id}
+                className="border-b border-stone-100 px-2 py-1.5"
+              >
+                {item.title}
+              </div>
+            ))
+          ) : (
+            <p className="px-2 py-3 text-center text-stone-400">
+              {active ? "Sin resultados" : "Móntalo para buscar"}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Registro de actividad
+        </p>
+        <LogPanel log={log} logRef={logRef} />
+      </div>
+    </div>
+  );
+}
+
 export default function MyStateDemo() {
   // El único estado que vive en el padre: un contador para forzar un
   // remount completo de cada tarjeta (cada una crea sus propios stores,
@@ -926,10 +1120,14 @@ export default function MyStateDemo() {
 
       <div>
         <p className="mb-1 text-xs font-medium text-stone-500">
-          Parámetros reactivos: <code>computed</code> sin <code>onMount</code>,
-          no hay nada remoto que pedir perezosamente
+          Parámetros reactivos: dos variantes. Una deriva un valor sin fetch (
+          <code>computed</code>, sin <code>onMount</code>); la otra reacciona a
+          cada cambio de parámetro con un fetch cancelable
         </p>
-        <ImageParamsCard key={`image-${resetKey}`} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ImageParamsCard key={`image-${resetKey}`} />
+          <SearchCard key={`search-${resetKey}`} />
+        </div>
       </div>
     </div>
   );
