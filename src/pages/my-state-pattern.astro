@@ -197,6 +197,31 @@ const $feed = createFeedResource<Article>((cursor, signal) =>
   fetch(\`/api/articles?cursor=\${cursor ?? ""}\`, { signal }).then((r) => r.json()),
 )`;
 
+const reactiveParamsSnippet = `type ImageParams = {
+  text: string
+  width: number
+  height: number
+}
+
+const $params = atom<ImageParams>({ text: 'my-state', width: 320, height: 160 })
+
+// Un computed normal: no hay onMount, porque no hay nada async que
+// activar. La URL se recalcula sola cada vez que $params cambia.
+const $imageUrl = computed($params, (params) => {
+  const text = encodeURIComponent(params.text.trim() || ' ')
+  return \`https://placehold.co/\${params.width}x\${params.height}?text=\${text}\`
+})
+
+// En el componente: el <img> hace el "fetch" solo, declarativamente
+function PlaceholderPreview() {
+  const imageUrl = useStore($imageUrl)
+  return <img src={imageUrl} alt="preview" />
+}
+
+function onTextChange(text: string) {
+  $params.set({ ...$params.get(), text })
+}`;
+
 const reactSnippet = `import { useStore } from '@nanostores/react'
 
 function useHome() {
@@ -397,8 +422,35 @@ $home.listen((state) => {
         </a>
 
         <a
+          href="#parametros-reactivos"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Parámetros reactivos (imagen placeholder)
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            <code>$imageUrl</code>: estado local (un texto) que deriva una URL
+            de un servicio de placeholder, sin fetch propio ni onMount.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>atom</code> de parámetros</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>computed</code> sin onMount</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              >derivación pura</span
+            >
+          </div>
+        </a>
+
+        <a
           href="#consumo"
-          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50 sm:col-span-2"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
         >
           <h3 class="mb-1 font-semibold text-stone-900">Consumir el estado</h3>
           <p class="mb-3 text-sm text-stone-600">
@@ -587,6 +639,24 @@ $home.listen((state) => {
                 <code>cursor</code> es el state que permite continuar la paginación.
               </td>
             </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#parametros-reactivos"
+                  class="font-medium text-stone-900 underline"
+                  ><code>ImageParams</code> / <code>$imageUrl</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom(params) → computed(url)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Estado local que no representa ningún recurso remoto:{" "}
+                <code>$params</code> guarda lo que el usuario escribe, y{" "}
+                <code>computed</code> deriva un valor sincrónicamente (una URL).
+                No necesita <code>onMount</code> porque no hay nada que activar perezosamente.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -632,7 +702,9 @@ $home.listen((state) => {
         mientras está montado, y <code>onUnmount</code> cierra la conexión en vez
         de abortar un fetch puntual. Y <code>$feed</code>, una lista con scroll
         infinito real: desplázate dentro de la lista para pedir la siguiente
-        página automáticamente.
+        página automáticamente. Por último, <code>$imageUrl</code>: sin montar
+        nada, escribe un texto y mira la URL de un placeholder actualizarse
+        sola.
       </p>
       <MyStateDemo client:load />
     </section>
@@ -750,6 +822,41 @@ $home.listen((state) => {
       </p>
     </section>
 
+    <section id="parametros-reactivos" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Parámetros reactivos: derivar sin fetch
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        No todo el estado de una página viene de una API. A veces el "recurso"
+        es puramente local: un texto que el usuario escribe, y lo que necesitas
+        es <em>derivar</em> algo a partir de él — por ejemplo, la URL de una imagen
+        de un servicio de placeholder como{" "}
+        <a
+          href="https://placehold.co"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline hover:text-stone-900">placehold.co</a
+        >. Para eso no hace falta <code>Resource&lt;T&gt;</code> ni{" "}
+        <code>onMount</code>: alcanza con un <code>atom</code> de parámetros y un
+        <code>computed</code> que los transforma.
+      </p>
+      <Code code={reactiveParamsSnippet} lang="tsx" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        La diferencia clave con todo lo anterior: este <code>computed</code>{
+          " "
+        }
+        no necesita <code>onMount</code> porque no hay nada que activar perezosamente
+        — no se está pidiendo nada a un servidor, solo se está calculando un string
+        a partir de otro. El propio{" "}
+        <code>&lt;img src=&#123;imageUrl&#125;&gt;</code> es quien dispara la petición
+        de red, de forma declarativa, cuando el navegador decide pintar esa imagen.
+        La demo de arriba (<code>$imageUrl</code>) no necesita que montes nada:
+        escribe en el campo de texto y mira la URL (y la imagen) actualizarse
+        solas, con un pequeño debounce para no pedir una imagen nueva en cada
+        tecla.
+      </p>
+    </section>
+
     <section id="consumo" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">Consumo</h2>
 
@@ -795,6 +902,12 @@ $home.listen((state) => {
           Para listas paginadas usa un store que <em>acumule</em> items y guarde
           el cursor de la última página, no un{" "}
           <code>Resource&lt;T[]&gt;</code> que reemplaza el arreglo en cada fetch.
+        </li>
+        <li>
+          No fuerces <code>Resource&lt;T&gt;</code> ni <code>onMount</code>{" "}
+          en estado puramente local (parámetros de UI, filtros, texto de un input):
+          un <code>atom</code> + <code>computed</code> simple alcanza si no hay nada
+          async que activar perezosamente.
         </li>
         <li>
           Comparte recursos entre páginas con la variante atomizada cuando

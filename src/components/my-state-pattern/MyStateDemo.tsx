@@ -1,4 +1,10 @@
-import { atom, computed, onMount, type WritableAtom } from "nanostores";
+import {
+  atom,
+  computed,
+  onMount,
+  type ReadableAtom,
+  type WritableAtom,
+} from "nanostores";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Resource<T> = [loading: boolean, error: unknown, data: T | null];
@@ -302,6 +308,55 @@ function createFeedStore(log: (text: string) => void): {
   };
 }
 
+type ImageParams = {
+  text: string;
+  width: number;
+  height: number;
+  bg: string;
+  fg: string;
+};
+
+const DEFAULT_IMAGE_PARAMS: ImageParams = {
+  text: "my-state",
+  width: 320,
+  height: 160,
+  bg: "1c1917",
+  fg: "ffffff",
+};
+
+const IMAGE_SIZE_PRESETS: Array<Pick<ImageParams, "width" | "height">> = [
+  { width: 320, height: 160 },
+  { width: 240, height: 240 },
+  { width: 480, height: 200 },
+];
+
+// No hay recurso remoto que pedir: $params guarda lo que el usuario escribe,
+// y $imageUrl deriva sincrónicamente la URL a partir de esos parámetros con
+// un `computed` normal. No necesita onMount porque no hay nada async que
+// activar perezosamente — el navegador hace el fetch de la imagen solo,
+// declarativamente, al poner esa URL en un <img src>.
+function createImageParamsStore(): {
+  $params: WritableAtom<ImageParams>;
+  $imageUrl: ReadableAtom<string>;
+} {
+  const $params = atom<ImageParams>(DEFAULT_IMAGE_PARAMS);
+  const $imageUrl = computed($params, (params) => {
+    const text = encodeURIComponent(params.text.trim() || " ");
+    return `https://placehold.co/${params.width}x${params.height}/${params.bg}/${params.fg}?text=${text}`;
+  });
+  return { $params, $imageUrl };
+}
+
+// A diferencia de useGatedValue, este store no tiene onMount ni efectos
+// secundarios que activar: leer .get() en cualquier momento es inofensivo,
+// así que basta con un subscribe normal (lo mismo que hace useStore de
+// @nanostores/react).
+function useLiveValue<T>(store: ReadableAtom<T>): T {
+  const [value, setValue] = useState(() => store.get());
+  useEffect(() => store.listen(setValue), [store]);
+  return value;
+}
+
 // Reading `store.get()` on a nanostores atom momentarily mounts it (even
 // without a lasting listener), which would trigger onMount's fetch as a
 // side effect of rendering. To keep "nobody is watching" truly inert
@@ -581,6 +636,83 @@ function FeedCard({
   );
 }
 
+function ImageParamsCard({
+  paramsStore,
+  imageUrlStore,
+}: {
+  paramsStore: WritableAtom<ImageParams>;
+  imageUrlStore: ReadableAtom<string>;
+}) {
+  const params = useLiveValue(paramsStore);
+  const imageUrl = useLiveValue(imageUrlStore);
+  const [text, setText] = useState(params.text);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row">
+      <img
+        src={imageUrl}
+        alt={params.text || "placeholder"}
+        width={params.width}
+        height={params.height}
+        className="h-auto w-full max-w-[200px] rounded-md border border-stone-100 sm:w-1/2"
+      />
+
+      <div className="flex flex-1 flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <code className="text-sm font-semibold text-stone-800">
+            $imageUrl
+          </code>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
+            sin onMount, solo computed
+          </span>
+        </div>
+
+        <label className="flex flex-col gap-1 text-xs text-stone-600">
+          Texto
+          <input
+            type="text"
+            value={text}
+            onChange={(event) => {
+              const value = event.target.value;
+              setText(value);
+              // Debounce: solo escribe en $params (y por lo tanto pide una
+              // nueva imagen al servicio de placeholder) 300ms después del
+              // último tecleo, no en cada keystroke.
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                paramsStore.set({ ...paramsStore.get(), text: value });
+              }, 300);
+            }}
+            className="rounded-md border border-stone-300 px-2 py-1 text-xs"
+          />
+        </label>
+
+        <div className="flex flex-wrap gap-1.5">
+          {IMAGE_SIZE_PRESETS.map((size) => (
+            <button
+              key={`${size.width}x${size.height}`}
+              onClick={() => paramsStore.set({ ...paramsStore.get(), ...size })}
+              className={
+                "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors " +
+                (params.width === size.width && params.height === size.height
+                  ? "border-stone-900 bg-stone-900 text-white"
+                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100")
+              }
+            >
+              {size.width}×{size.height}
+            </button>
+          ))}
+        </div>
+
+        <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
+          {imageUrl}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 export default function MyStateDemo() {
   const [active, setActive] = useState(false);
   const [log, setLog] = useState<Entry[]>([]);
@@ -600,7 +732,7 @@ export default function MyStateDemo() {
     ]);
   };
 
-  const { stores, retries, configs, $home, sse, feed } = useMemo(() => {
+  const { stores, retries, configs, $home, sse, feed, image } = useMemo(() => {
     const configs: Record<string, Config> = {};
     const stores: Record<string, WritableAtom<Resource<unknown>>> = {};
     const retries: Record<string, () => void> = {};
@@ -626,7 +758,10 @@ export default function MyStateDemo() {
     // $feed tampoco entra a $home: es un store incremental (paginado),
     // no un Resource<T> de una sola resolución.
     const feed = createFeedStore(pushLog);
-    return { stores, retries, configs, $home, sse, feed };
+    // $params/$imageUrl tampoco entra a $home: no representa un recurso
+    // remoto en absoluto, es estado local derivado sincrónicamente.
+    const image = createImageParamsStore();
+    return { stores, retries, configs, $home, sse, feed, image };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation]);
 
@@ -735,6 +870,18 @@ export default function MyStateDemo() {
             onLoadMore={feed.loadMore}
           />
         </div>
+      </div>
+
+      <div>
+        <p className="mb-1 text-xs font-medium text-stone-500">
+          Parámetros reactivos: <code>computed</code> sin <code>onMount</code>,
+          no hay nada remoto que pedir perezosamente
+        </p>
+        <ImageParamsCard
+          key={`image-${generation}`}
+          paramsStore={image.$params}
+          imageUrlStore={image.$imageUrl}
+        />
       </div>
 
       <div>
