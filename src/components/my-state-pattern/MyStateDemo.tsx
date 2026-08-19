@@ -107,6 +107,67 @@ function createDemoStore(
   return { $resource, retry: () => run("reintento manual") };
 }
 
+type SseTick = { tick: number; value: number };
+
+// Simula un EventSource: en vez de resolver una vez, empuja mensajes
+// periódicos al store mientras está "conectado". onUnmount cierra la
+// conexión (clearInterval aquí, `source.close()` con un EventSource real)
+// en vez de abortar una petición puntual — mismo contrato, otro recurso.
+function createSseDemoStore(log: (text: string) => void): {
+  $resource: WritableAtom<Resource<SseTick>>;
+  config: Config;
+  reconnect: () => void;
+} {
+  const $resource = atom<Resource<SseTick>>([true, null, null]);
+  const config: Config = { forceError: false, delayMs: 700 };
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  function close() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function connect(reason: string) {
+    close();
+    log(`[$liveMetrics] ${reason}`);
+    $resource.set([true, null, null]);
+
+    let tick = 0;
+    timer = setInterval(() => {
+      if (config.forceError) {
+        log("[$liveMetrics] conexión perdida (source.onerror)");
+        $resource.set([false, new Error("Conexión SSE perdida"), null]);
+        close();
+        return;
+      }
+      tick += 1;
+      if (tick === 1) log("[$liveMetrics] primer mensaje (source.onmessage)");
+      $resource.set([
+        false,
+        null,
+        { tick, value: Math.round(Math.random() * 100) },
+      ]);
+    }, config.delayMs);
+  }
+
+  onMount($resource, () => {
+    connect("onMount → abre EventSource");
+
+    return () => {
+      log("[$liveMetrics] onStop → source.close()");
+      close();
+    };
+  });
+
+  return {
+    $resource,
+    config,
+    reconnect: () => connect("reconectar (nuevo EventSource)"),
+  };
+}
+
 // Reading `store.get()` on a nanostores atom momentarily mounts it (even
 // without a lasting listener), which would trigger onMount's fetch as a
 // side effect of rendering. To keep "nobody is watching" truly inert
@@ -212,6 +273,76 @@ function ResourceCard({
   );
 }
 
+function SseCard({
+  store,
+  config,
+  active,
+  onReconnect,
+}: {
+  store: WritableAtom<Resource<SseTick>>;
+  config: Config;
+  active: boolean;
+  onReconnect: () => void;
+}) {
+  const state = useGatedValue<Resource<SseTick>>(store, active, [
+    true,
+    null,
+    null,
+  ]);
+  const [loading, error, data] = state;
+  const [forceError, setForceError] = useState(config.forceError);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <code className="text-sm font-semibold text-stone-800">
+          $liveMetrics
+        </code>
+        {loading ? (
+          <StatusPill state={state} />
+        ) : error ? (
+          <StatusPill state={state} />
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800">
+            <span className="size-1.5 animate-pulse rounded-full bg-sky-500" />
+            streaming
+          </span>
+        )}
+      </div>
+
+      <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
+        {`[${state[0]}, ${
+          error
+            ? JSON.stringify(String((error as Error)?.message ?? error))
+            : "null"
+        }, ${data ? JSON.stringify(data) : "null"}]`}
+      </pre>
+
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <label className="flex items-center gap-1.5 text-stone-600">
+          <input
+            type="checkbox"
+            checked={forceError}
+            onChange={() => {
+              config.forceError = !config.forceError;
+              setForceError(config.forceError);
+            }}
+            className="size-3.5"
+          />
+          simular corte
+        </label>
+        <button
+          onClick={onReconnect}
+          disabled={!active}
+          className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Reconectar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MyStateDemo() {
   const [active, setActive] = useState(false);
   const [log, setLog] = useState<Entry[]>([]);
@@ -231,7 +362,7 @@ export default function MyStateDemo() {
     ]);
   };
 
-  const { stores, retries, configs, $home } = useMemo(() => {
+  const { stores, retries, configs, $home, sse } = useMemo(() => {
     const configs: Record<string, Config> = {};
     const stores: Record<string, WritableAtom<Resource<unknown>>> = {};
     const retries: Record<string, () => void> = {};
@@ -251,7 +382,10 @@ export default function MyStateDemo() {
       (...states) =>
         Object.fromEntries(RESOURCE_DEFS.map((d, i) => [d.key, states[i]])),
     );
-    return { stores, retries, configs, $home };
+    // $liveMetrics no entra a $home: no es un recurso de una sola
+    // resolución, pero comparte el mismo contrato onMount/onUnmount.
+    const sse = createSseDemoStore(pushLog);
+    return { stores, retries, configs, $home, sse };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation]);
 
@@ -328,6 +462,22 @@ export default function MyStateDemo() {
             onRetry={retries[def.key]}
           />
         ))}
+      </div>
+
+      <div>
+        <p className="mb-1 text-xs font-medium text-stone-500">
+          Streaming (SSE): mismo ciclo <code>onMount</code>/
+          <code>onUnmount</code>, un recurso que no se resuelve una sola vez
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <SseCard
+            key={`sse-${generation}`}
+            store={sse.$resource}
+            config={sse.config}
+            active={active}
+            onReconnect={sse.reconnect}
+          />
+        </div>
       </div>
 
       <div>

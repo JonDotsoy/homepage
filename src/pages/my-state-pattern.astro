@@ -106,6 +106,34 @@ const $session = createResource((signal) =>
   fetch('/api/session', { signal }).then((r) => r.json()),
 )`;
 
+const sseSnippet = `function createLiveResource<T>(
+  connect: (
+    onMessage: (data: T) => void,
+    onError: (error: unknown) => void,
+  ) => () => void,
+) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    const close = connect(
+      (data) => $resource.set([false, null, data]),
+      (error) => $resource.set([false, error, null]),
+    )
+
+    // onUnmount: cierra la conexión, no descarta una respuesta puntual
+    return () => close()
+  })
+
+  return $resource
+}
+
+const $liveMetrics = createLiveResource<Metrics>((onMessage, onError) => {
+  const source = new EventSource('/api/metrics/stream')
+  source.onmessage = (event) => onMessage(JSON.parse(event.data))
+  source.onerror = (event) => onError(event)
+  return () => source.close()
+})`;
+
 const reactSnippet = `import { useStore } from '@nanostores/react'
 
 function useHome() {
@@ -213,6 +241,10 @@ $home.listen((state) => {
         ver el <code>onMount</code> disparar los fetch, fuerza un error en algún
         recurso, o desmóntalo para ver el <code>onUnmount</code> abortando el fetch
         en curso con <code>AbortController</code> (mira el registro de actividad).
+        También incluye <code>$liveMetrics</code>, un recurso que simula un{" "}
+        <code>EventSource</code> (SSE): en vez de resolver una vez, empuja mensajes
+        mientras está montado, y <code>onUnmount</code> cierra la conexión en vez
+        de abortar un fetch puntual.
       </p>
       <MyStateDemo client:load />
     </section>
@@ -273,6 +305,33 @@ $home.listen((state) => {
         el de un reintento posterior). La demo de más arriba implementa exactamente
         este patrón — desmóntala mientras un recurso está cargando y revisa el registro
         de actividad.
+      </p>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Streaming con SSE: un recurso que no se resuelve una sola vez
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        El contrato <code>onMount</code>/<code>onUnmount</code> no es exclusivo de
+        <code>fetch</code>. Sirve para cualquier fuente que necesite abrirse al
+        montar y cerrarse al desmontar: un{" "}
+        <code>EventSource</code> (Server-Sent Events) es el ejemplo más directo.
+        La diferencia con un recurso normal es que{" "}
+        <code>$resource.set(...)</code> se llama muchas veces — una por mensaje —
+        en vez de una sola vez al resolver una promesa.
+      </p>
+      <Code code={sseSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Aquí <code>onUnmount</code> no aborta una petición puntual, cierra una conexión
+        de larga duración con <code>source.close()</code>. Sin ese cleanup, cada
+        vez que la página se desmonta y se vuelve a montar (por ejemplo, al
+        navegar) quedaría una conexión SSE abierta escuchando eventos que nadie
+        va a leer — un leak silencioso y fácil de pasar por alto. La demo de
+        arriba simula esto con{" "}
+        <code>$liveMetrics</code>: móntala para ver los mensajes llegar cada
+        ~700ms, fuerza un corte de conexión, o desmóntala y revisa el registro
+        de actividad para confirmar el <code>source.close()</code>.
       </p>
     </section>
 
