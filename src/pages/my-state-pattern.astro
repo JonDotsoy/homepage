@@ -134,67 +134,66 @@ const $liveMetrics = createLiveResource<Metrics>((onMessage, onError) => {
   return () => source.close()
 })`;
 
-const infiniteScrollSnippet = `type Page<T> = { items: T[]; nextCursor: string | null }
-
-type FeedState<T> = {
-  items: T[]
-  cursor: string | null
-  hasMore: boolean
-  loading: boolean
-  error: unknown
-}
+const infiniteScrollSnippet = `// Mismo patrón que $params/$search: dos stores separados. $cursor no
+// sabe nada de fetch, $feed es el único con onMount y se subscribe a
+// $cursor al montarse — la diferencia es que la respuesta se concatena
+// a los items que ya había, en vez de reemplazarlos.
+type Page<T> = { items: T[]; hasMore: boolean }
+type FeedState<T> = { items: T[]; hasMore: boolean; loading: boolean; error: unknown }
 
 function createFeedResource<T>(
-  fetchPage: (cursor: string | null, signal: AbortSignal) => Promise<Page<T>>,
+  fetchPage: (cursor: number, signal: AbortSignal) => Promise<Page<T>>,
 ) {
-  const $feed = atom<FeedState<T>>({
-    items: [],
-    cursor: null,
-    hasMore: true,
-    loading: true,
-    error: null,
-  })
+  const $cursor = atom<number>(0)
+  const $feed = atom<FeedState<T>>({ items: [], hasMore: true, loading: true, error: null })
   let controller: AbortController | null = null
-
-  function loadPage(cursor: string | null) {
-    controller?.abort()
-    controller = new AbortController()
-    const { signal } = controller
-    $feed.set({ ...$feed.get(), loading: true, error: null })
-
-    t(fetchPage(cursor, signal)).then(([ok, error, page]) => {
-      if (signal.aborted) return
-      const prev = $feed.get()
-      $feed.set(
-        ok
-          ? {
-              items: [...prev.items, ...page.items], // se concatena, no se reemplaza
-              cursor: page.nextCursor,
-              hasMore: page.nextCursor !== null,
-              loading: false,
-              error: null,
-            }
-          : { ...prev, loading: false, error },
-      )
-    })
-  }
+  let lastFetchedCursor: number | null = null
 
   onMount($feed, () => {
-    // un remount rápido no debería tirar los items ya acumulados
-    if ($feed.get().items.length === 0) loadPage(null)
-    return () => controller?.abort()
+    // subscribe() dispara también con el valor actual de $cursor (0), así
+    // la primera página sale de inmediato al montar. Un remount rápido
+    // vuelve a disparar con el mismo cursor de la última vez: el guard
+    // evita repetir esa página y descartar los items ya acumulados.
+    const unsubscribe = $cursor.subscribe((cursor) => {
+      if (cursor === lastFetchedCursor) return
+      lastFetchedCursor = cursor
+
+      controller?.abort()
+      controller = new AbortController()
+      $feed.set({ ...$feed.get(), loading: true, error: null })
+
+      t(fetchPage(cursor, controller.signal)).then(([ok, error, page]) => {
+        if (controller.signal.aborted) return
+        const prev = $feed.get()
+        $feed.set(
+          ok
+            ? {
+                items: [...prev.items, ...page.items], // se concatena, no se reemplaza
+                hasMore: page.hasMore,
+                loading: false,
+                error: null,
+              }
+            : { ...prev, loading: false, error },
+        )
+      })
+    })
+
+    return () => {
+      unsubscribe()
+      controller?.abort()
+    }
   })
 
   function loadMore() {
-    const { cursor, hasMore, loading } = $feed.get()
-    if (hasMore && !loading) loadPage(cursor)
+    const { hasMore, loading } = $feed.get()
+    if (hasMore && !loading) $cursor.set($cursor.get() + 1)
   }
 
-  return { $feed, loadMore }
+  return { $cursor, $feed, loadMore }
 }
 
-const $feed = createFeedResource<Article>((cursor, signal) =>
-  fetch(\`/api/articles?cursor=\${cursor ?? ""}\`, { signal }).then((r) => r.json()),
+const { $feed, loadMore } = createFeedResource<Article>((cursor, signal) =>
+  fetch(\`/api/articles?page=\${cursor}\`, { signal }).then((r) => r.json()),
 )`;
 
 const reactiveParamsSnippet = `type ImageParams = {
@@ -436,17 +435,18 @@ $home.listen((state) => {
             Infinite scroll paginado
           </h3>
           <p class="mb-3 text-sm text-stone-600">
-            <code>$feed</code>: una lista que acumula items página a página,
-            retomando desde el cursor de la última.
+            <code>$cursor</code> guarda la página; <code>$feed</code>{" "}
+            se subscribe a <code>$cursor</code> al montarse y acumula cada respuesta
+            en vez de reemplazarla.
           </p>
           <div class="flex flex-wrap gap-1.5">
             <span
               class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
-              ><code>FeedState&lt;T&gt;</code></span
+              >dos stores separados</span
             >
             <span
               class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
-              >cursor</span
+              ><code>subscribe()</code> dentro de onMount</span
             >
             <span
               class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
@@ -454,7 +454,7 @@ $home.listen((state) => {
             >
             <span
               class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
-              ><code>onMount</code> condicional</span
+              >acumulación, no reemplazo</span
             >
           </div>
         </a>
@@ -672,16 +672,20 @@ $home.listen((state) => {
                 <a
                   href="#infinite-scroll"
                   class="font-medium text-stone-900 underline"
-                  ><code>FeedState&lt;T&gt;</code></a
+                  ><code>$cursor</code> / <code>$feed</code></a
                 >
               </td>
               <td class="px-4 py-3 align-top">
-                <code>{"{"} items, cursor, hasMore, loading, error {"}"}</code>
+                <code>atom(number) + onMount(subscribe)</code>
               </td>
               <td class="px-4 py-3 align-top">
-                Variante incremental para listas paginadas: cada página se
-                concatena en vez de reemplazar el valor, y el{" "}
-                <code>cursor</code> es el state que permite continuar la paginación.
+                Mismo patrón que <code>$params</code>/<code>$search</code>,
+                aplicado a paginación: <code>$cursor</code> guarda la página, <code
+                  >$feed</code
+                > se <code>subscribe()</code> a ella al montarse. La diferencia es
+                que la respuesta se acumula (<code
+                  >[...prev.items, ...page.items]</code
+                >) en vez de reemplazar el valor.
               </td>
             </tr>
             <tr>
@@ -867,28 +871,37 @@ $home.listen((state) => {
 
     <section id="infinite-scroll" class="mb-12">
       <h2 class="text-xl font-semibold text-stone-900 mb-3">
-        Infinite scroll: un store incremental
+        Infinite scroll: el mismo patrón, con un store que acumula
       </h2>
       <p class="text-stone-600 leading-relaxed mb-4">
-        Una lista paginada tampoco encaja en <code>Resource&lt;T&gt;</code>{" "}
-        tal cual: cada página no reemplaza el estado, lo <strong>acumula</strong
-        >. El "state para continuar la paginación" es el <code>cursor</code> que
-        trae cada respuesta — no un número de página que vos llevas aparte, sino
-        el que el servidor te devuelve para pedir la siguiente tanda.
+        Funciona igual que <code>$params</code>/<code>$search</code>: dos stores
+        separados. <code>$cursor</code> no sabe nada de fetch — solo guarda qué página
+        toca pedir. <code>$feed</code> es el único con{" "}
+        <code>onMount</code>, y al montarse se <code>subscribe()</code> a{" "}
+        <code>$cursor</code>. La única diferencia real es qué hace con la
+        respuesta: en vez de <em>reemplazar</em> el valor, lo{" "}
+        <strong>acumula</strong> (<code>[...prev.items, ...page.items]</code>).
       </p>
       <Code code={infiniteScrollSnippet} lang="ts" theme="github-dark" />
       <p class="text-stone-600 leading-relaxed mt-3">
-        Dos detalles que distinguen este store de los anteriores: primero, cada
-        página se concatena (<code>[...prev.items, ...page.items]</code>) en vez
-        de reemplazar el valor completo. Segundo, <code>onMount</code> solo pide
-        la primera página <em>si todavía no hay items</em> — así un remount rápido
-        (por ejemplo, volver a una lista que ya habías scrolleado) no descarta el
-        progreso ya cargado; simplemente retoma. <code>onUnmount</code> sigue cancelando
-        la página en curso con <code>AbortController</code>, igual que en el
-        ejemplo de arriba, pero sin tocar los items ya acumulados. La demo
-        simula un feed de 20 artículos en 4 páginas: móntala y desplázate dentro
-        de{" "}
-        <code>$feed</code> para ver la carga automática, o usa "Cargar más" directamente.
+        Igual que en <code>$search</code>, <code>subscribe()</code> (no{" "}
+        <code>listen()</code>) hace que la primera página salga de inmediato al
+        montar, con el <code>$cursor</code> inicial (0). Pero acá hay un detalle
+        nuevo: un remount rápido vuelve a disparar el callback con el <em
+          >mismo</em
+        >
+        <code>$cursor</code> de la última vez (porque{" "}
+        <code>$cursor</code> no se resetea entre mounts), y sin cuidado eso repetiría
+        la última página y duplicaría items. El guard{" "}
+        <code>if (cursor === lastFetchedCursor) return</code> es lo que evita eso
+        — el equivalente de "si ya tengo esta página, no la vuelvas a pedir". <code
+          >loadMore()</code
+        > simplemente hace{" "}
+        <code>$cursor.set($cursor.get() + 1)</code>: cambiar el cursor es lo
+        único que hace falta para que <code>$feed</code> reaccione y pida la siguiente
+        tanda. La demo simula un feed de 20 artículos en 4 páginas: móntala y desplázate
+        dentro de <code>$feed</code> para ver la carga automática, o usa "Cargar
+        más" directamente.
       </p>
     </section>
 

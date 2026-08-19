@@ -178,10 +178,9 @@ const FEED_PAGE_SIZE = 5;
 const FEED_TOTAL_PAGES = 4;
 
 type FeedItem = { id: number; title: string };
-type FeedPage = { items: FeedItem[]; nextCursor: number | null };
+type FeedPage = { items: FeedItem[]; hasMore: boolean };
 type FeedState = {
   items: FeedItem[];
-  cursor: number | null;
   hasMore: boolean;
   loading: boolean;
   error: unknown;
@@ -189,18 +188,15 @@ type FeedState = {
 
 const IDLE_FEED: FeedState = {
   items: [],
-  cursor: null,
   hasMore: true,
   loading: true,
   error: null,
 };
 
-// Simula una API paginada: `cursor` identifica la página a pedir (null =
-// primera), y cada respuesta trae su propio `nextCursor` — el estado que
-// hay que guardar para poder seguir pidiendo "la siguiente" sin volver a
-// pedir lo ya cargado.
+// Simula una API paginada: `cursor` es directamente el número de página
+// (0, 1, 2…), y la respuesta dice si queda algo más para pedir.
 function simulateFeedPage(
-  cursor: number | null,
+  cursor: number,
   config: Config,
   signal: AbortSignal,
 ): Promise<FeedPage> {
@@ -214,17 +210,12 @@ function simulateFeedPage(
         reject(new Error("No se pudo cargar la página"));
         return;
       }
-      const page = cursor ?? 0;
-      const start = page * FEED_PAGE_SIZE;
+      const start = cursor * FEED_PAGE_SIZE;
       const items = Array.from({ length: FEED_PAGE_SIZE }, (_, i) => ({
         id: start + i + 1,
         title: `Artículo #${start + i + 1}`,
       }));
-      const nextPage = page + 1;
-      resolve({
-        items,
-        nextCursor: nextPage < FEED_TOTAL_PAGES ? nextPage : null,
-      });
+      resolve({ items, hasMore: cursor + 1 < FEED_TOTAL_PAGES });
     }, config.delayMs);
     signal.addEventListener(
       "abort",
@@ -237,73 +228,77 @@ function simulateFeedPage(
   });
 }
 
-// A diferencia de Resource<T>, este store no reemplaza su valor en cada
-// respuesta: lo acumula (`items: [...prev.items, ...page.items]`). El
-// "state para continuar la paginación" es el cursor de la última página
-// resuelta, guardado junto a los items.
+// Mismo patrón que $params/$search: dos stores separados. $cursor no sabe
+// nada de fetch — solo guarda qué página toca pedir. $feed es el único
+// con onMount, y al montarse se subscribe a $cursor con subscribe() (así
+// la página 0 sale de inmediato). A diferencia de $search, la respuesta
+// no reemplaza el valor: se concatena a los items que ya había.
 function createFeedStore(log: (text: string) => void): {
+  $cursor: WritableAtom<number>;
   $feed: WritableAtom<FeedState>;
   config: Config;
   loadMore: () => void;
 } {
+  const $cursor = atom<number>(0);
   const $feed = atom<FeedState>(IDLE_FEED);
   const config: Config = { forceError: false, delayMs: 900 };
   let controller: AbortController | null = null;
-
-  function loadPage(cursor: number | null, reason: string) {
-    controller?.abort();
-    const ownController = new AbortController();
-    controller = ownController;
-    const { signal } = ownController;
-
-    log(`[$feed] ${reason}`);
-    $feed.set({ ...$feed.get(), loading: true, error: null });
-
-    t(simulateFeedPage(cursor, config, signal)).then(([ok, error, page]) => {
-      if (signal.aborted) {
-        log("[$feed] fetch de página abortado, se descarta");
-        return;
-      }
-      if (!ok) {
-        $feed.set({ ...$feed.get(), loading: false, error });
-        log("[$feed] t() resolvió → ok:false");
-        return;
-      }
-      const prev = $feed.get();
-      $feed.set({
-        items: [...prev.items, ...page.items],
-        cursor: page.nextCursor,
-        hasMore: page.nextCursor !== null,
-        loading: false,
-        error: null,
-      });
-      log(`[$feed] t() resolvió → ok:true, +${page.items.length} items`);
-    });
-  }
+  // Un remount rápido no debería repetir la última página ya cargada:
+  // subscribe() dispara de nuevo con el cursor actual al re-montar, así
+  // que hay que distinguir "cursor nuevo" de "el mismo de la vez pasada".
+  let lastFetchedCursor: number | null = null;
 
   onMount($feed, () => {
-    // Solo pide la primera página si todavía no hay nada: un remount
-    // rápido (desmontar y volver a montar antes del onStop) no debería
-    // tirar los items que ya se acumularon.
-    if ($feed.get().items.length === 0) {
-      loadPage(null, "onMount → sin items todavía, pide la primera página");
-    } else {
-      log("[$feed] onMount → ya había items, no repite la primera página");
-    }
+    log("onMount → subscribe a $cursor");
+
+    const unsubscribe = $cursor.subscribe((cursor) => {
+      if (cursor === lastFetchedCursor) {
+        log("cursor sin cambios desde el último fetch, no repite la página");
+        return;
+      }
+      lastFetchedCursor = cursor;
+
+      controller?.abort();
+      const ownController = new AbortController();
+      controller = ownController;
+      const { signal } = ownController;
+      $feed.set({ ...$feed.get(), loading: true, error: null });
+
+      t(simulateFeedPage(cursor, config, signal)).then(([ok, error, page]) => {
+        if (signal.aborted) {
+          log("fetch de página abortado, se descarta");
+          return;
+        }
+        const prev = $feed.get();
+        $feed.set(
+          ok
+            ? {
+                items: [...prev.items, ...page.items],
+                hasMore: page.hasMore,
+                loading: false,
+                error: null,
+              }
+            : { ...prev, loading: false, error },
+        );
+        log(`t() resolvió → ok:${ok}`);
+      });
+    });
 
     return () => {
-      log("[$feed] onStop → aborta la página en curso, conserva los items");
+      log("onStop → unsubscribe de $cursor, aborta la página en curso");
+      unsubscribe();
       controller?.abort();
     };
   });
 
   return {
+    $cursor,
     $feed,
     config,
     loadMore: () => {
       const state = $feed.get();
       if (!state.hasMore || state.loading) return;
-      loadPage(state.cursor, "cargar más → siguiente página con el cursor");
+      $cursor.set($cursor.get() + 1);
     },
   };
 }
@@ -759,13 +754,21 @@ function FeedCard() {
   const [active, setActive] = useState(false);
   const { log, push, logRef } = useCardLog();
 
-  const { store, config, loadMore } = useMemo(() => {
+  const { store, cursorStore, config, loadMore } = useMemo(() => {
     const demo = createFeedStore(push);
-    return { store: demo.$feed, config: demo.config, loadMore: demo.loadMore };
+    return {
+      store: demo.$feed,
+      cursorStore: demo.$cursor,
+      config: demo.config,
+      loadMore: demo.loadMore,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const state = useGatedValue<FeedState>(store, active, IDLE_FEED);
+  // $cursor no tiene onMount: leer su valor en cualquier momento es
+  // inofensivo, así que no necesita el mismo gateo que $feed.
+  const cursor = useLiveValue(cursorStore);
   const [forceError, setForceError] = useState(config.forceError);
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -829,7 +832,8 @@ function FeedCard() {
       </button>
 
       <p className="mb-[-8px] text-[11px] font-medium text-stone-500">
-        Último estado ({state.items.length} items acumulados)
+        Último estado ({state.items.length} items, <code>$cursor</code> ={" "}
+        {cursor})
       </p>
       <div
         ref={containerRef}
