@@ -5,7 +5,7 @@ import {
   type ReadableAtom,
   type WritableAtom,
 } from "nanostores";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
 type Resource<T> = [loading: boolean, error: unknown, data: T | null];
 
@@ -377,6 +377,58 @@ function useGatedValue<T>(store: WritableAtom<T>, active: boolean, idle: T): T {
   return value;
 }
 
+// Cada tarjeta lleva su propio registro de actividad: nada se comparte
+// entre ejemplos, así montar/desmontar uno no ensucia el log de otro.
+function useCardLog() {
+  const [log, setLog] = useState<Entry[]>([]);
+  const idRef = useRef(0);
+  const logRef = useRef<HTMLDivElement>(null);
+
+  const push = (text: string) => {
+    idRef.current += 1;
+    setLog((prev) => [
+      ...prev.slice(-19),
+      {
+        id: idRef.current,
+        time: new Date().toLocaleTimeString("es-CL", { hour12: false }),
+        text,
+      },
+    ]);
+  };
+
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [log]);
+
+  return { log, push, logRef };
+}
+
+function LogPanel({
+  log,
+  logRef,
+}: {
+  log: Entry[];
+  logRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      ref={logRef}
+      className="h-24 overflow-y-auto rounded-md border border-stone-200 bg-white p-2 font-mono text-[10px] leading-relaxed text-stone-600"
+    >
+      {log.length === 0 && (
+        <p className="text-stone-400">
+          Sin actividad. Móntalo para ver su ciclo de vida.
+        </p>
+      )}
+      {log.map((entry) => (
+        <p key={entry.id}>
+          <span className="text-stone-400">{entry.time}</span> {entry.text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function StatusPill({ state }: { state: Resource<unknown> }) {
   const [loading, error] = state;
   if (loading)
@@ -401,19 +453,22 @@ function StatusPill({ state }: { state: Resource<unknown> }) {
   );
 }
 
-function ResourceCard({
-  def,
-  store,
-  config,
-  active,
-  onRetry,
-}: {
-  def: ResourceDef;
-  store: WritableAtom<Resource<unknown>>;
-  config: Config;
-  active: boolean;
-  onRetry: () => void;
-}) {
+function ResourceCard({ def }: { def: ResourceDef }) {
+  const [active, setActive] = useState(false);
+  const { log, push, logRef } = useCardLog();
+
+  // Este ejemplo es independiente: su propio store, su propio config y su
+  // propio ciclo de vida, sin depender de ningún otro ejemplo de la página.
+  const { store, config, retry } = useMemo(() => {
+    // nanostores espera ~1s (STORE_UNMOUNT_DELAY) tras el último unsubscribe
+    // antes de llamar el onUnmount; el delay simulado debe ser mayor a eso
+    // para que desmontar durante la carga demuestre un abort real.
+    const config: Config = { forceError: false, delayMs: 2200 };
+    const demoStore = createDemoStore(def, config, push);
+    return { store: demoStore.$resource, config, retry: demoStore.retry };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const state = useGatedValue<Resource<unknown>>(store, active, [
     true,
     null,
@@ -422,6 +477,18 @@ function ResourceCard({
   const [, error, data] = state;
   const [forceError, setForceError] = useState(config.forceError);
 
+  const handleToggle = () => {
+    setActive((prev) => {
+      const next = !prev;
+      push(
+        next
+          ? "subscribe() → primer subscriptor, se activa onMount"
+          : "unsubscribe → sin subscriptores, se agenda onStop",
+      );
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between">
@@ -429,13 +496,30 @@ function ResourceCard({
         <StatusPill state={state} />
       </div>
 
-      <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
-        {`[${state[0]}, ${
-          error
-            ? JSON.stringify(String((error as Error)?.message ?? error))
-            : "null"
-        }, ${data ? JSON.stringify(data) : "null"}]`}
-      </pre>
+      <button
+        onClick={handleToggle}
+        className={
+          "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors " +
+          (active
+            ? "bg-stone-900 text-white hover:bg-stone-700"
+            : "bg-emerald-600 text-white hover:bg-emerald-500")
+        }
+      >
+        {active ? "Desmontar (unsubscribe)" : "Montar (subscribe)"}
+      </button>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Último estado
+        </p>
+        <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
+          {`[${state[0]}, ${
+            error
+              ? JSON.stringify(String((error as Error)?.message ?? error))
+              : "null"
+          }, ${data ? JSON.stringify(data) : "null"}]`}
+        </pre>
+      </div>
 
       <div className="flex items-center justify-between gap-2 text-xs">
         <label className="flex items-center gap-1.5 text-stone-600">
@@ -451,28 +535,38 @@ function ResourceCard({
           forzar error
         </label>
         <button
-          onClick={onRetry}
+          onClick={retry}
           disabled={!active}
           className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Reintentar
         </button>
       </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Registro de actividad
+        </p>
+        <LogPanel log={log} logRef={logRef} />
+      </div>
     </div>
   );
 }
 
-function SseCard({
-  store,
-  config,
-  active,
-  onReconnect,
-}: {
-  store: WritableAtom<Resource<SseTick>>;
-  config: Config;
-  active: boolean;
-  onReconnect: () => void;
-}) {
+function SseCard() {
+  const [active, setActive] = useState(false);
+  const { log, push, logRef } = useCardLog();
+
+  const { store, config, reconnect } = useMemo(() => {
+    const demo = createSseDemoStore(push);
+    return {
+      store: demo.$resource,
+      config: demo.config,
+      reconnect: demo.reconnect,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const state = useGatedValue<Resource<SseTick>>(store, active, [
     true,
     null,
@@ -480,6 +574,18 @@ function SseCard({
   ]);
   const [loading, error, data] = state;
   const [forceError, setForceError] = useState(config.forceError);
+
+  const handleToggle = () => {
+    setActive((prev) => {
+      const next = !prev;
+      push(
+        next
+          ? "subscribe() → primer subscriptor, se activa onMount"
+          : "unsubscribe → sin subscriptores, se agenda onStop",
+      );
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
@@ -499,13 +605,30 @@ function SseCard({
         )}
       </div>
 
-      <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
-        {`[${state[0]}, ${
-          error
-            ? JSON.stringify(String((error as Error)?.message ?? error))
-            : "null"
-        }, ${data ? JSON.stringify(data) : "null"}]`}
-      </pre>
+      <button
+        onClick={handleToggle}
+        className={
+          "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors " +
+          (active
+            ? "bg-stone-900 text-white hover:bg-stone-700"
+            : "bg-emerald-600 text-white hover:bg-emerald-500")
+        }
+      >
+        {active ? "Desmontar (unsubscribe)" : "Montar (subscribe)"}
+      </button>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Último estado
+        </p>
+        <pre className="overflow-x-auto rounded-md bg-stone-50 p-2 text-[11px] leading-relaxed text-stone-700">
+          {`[${state[0]}, ${
+            error
+              ? JSON.stringify(String((error as Error)?.message ?? error))
+              : "null"
+          }, ${data ? JSON.stringify(data) : "null"}]`}
+        </pre>
+      </div>
 
       <div className="flex items-center justify-between gap-2 text-xs">
         <label className="flex items-center gap-1.5 text-stone-600">
@@ -521,32 +644,50 @@ function SseCard({
           simular corte
         </label>
         <button
-          onClick={onReconnect}
+          onClick={reconnect}
           disabled={!active}
           className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Reconectar
         </button>
       </div>
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Registro de actividad
+        </p>
+        <LogPanel log={log} logRef={logRef} />
+      </div>
     </div>
   );
 }
 
-function FeedCard({
-  store,
-  config,
-  active,
-  onLoadMore,
-}: {
-  store: WritableAtom<FeedState>;
-  config: Config;
-  active: boolean;
-  onLoadMore: () => void;
-}) {
+function FeedCard() {
+  const [active, setActive] = useState(false);
+  const { log, push, logRef } = useCardLog();
+
+  const { store, config, loadMore } = useMemo(() => {
+    const demo = createFeedStore(push);
+    return { store: demo.$feed, config: demo.config, loadMore: demo.loadMore };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const state = useGatedValue<FeedState>(store, active, IDLE_FEED);
   const [forceError, setForceError] = useState(config.forceError);
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const handleToggle = () => {
+    setActive((prev) => {
+      const next = !prev;
+      push(
+        next
+          ? "subscribe() → primer subscriptor, se activa onMount"
+          : "unsubscribe → sin subscriptores, se agenda onStop",
+      );
+      return next;
+    });
+  };
 
   // Infinite scroll real: observa el centinela al final de la lista y
   // pide la siguiente página cuando entra en el viewport del contenedor.
@@ -558,13 +699,13 @@ function FeedCard({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) onLoadMore();
+        if (entries[0]?.isIntersecting) loadMore();
       },
       { root, rootMargin: "40px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [active, state.hasMore, state.loading, onLoadMore]);
+  }, [active, state.hasMore, state.loading, loadMore]);
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
@@ -582,6 +723,21 @@ function FeedCard({
         )}
       </div>
 
+      <button
+        onClick={handleToggle}
+        className={
+          "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors " +
+          (active
+            ? "bg-stone-900 text-white hover:bg-stone-700"
+            : "bg-emerald-600 text-white hover:bg-emerald-500")
+        }
+      >
+        {active ? "Desmontar (unsubscribe)" : "Montar (subscribe)"}
+      </button>
+
+      <p className="mb-[-8px] text-[11px] font-medium text-stone-500">
+        Último estado ({state.items.length} items acumulados)
+      </p>
       <div
         ref={containerRef}
         className="h-40 overflow-y-auto rounded-md border border-stone-100 bg-stone-50 text-[11px] text-stone-700"
@@ -619,7 +775,7 @@ function FeedCard({
           forzar error de página
         </label>
         <button
-          onClick={onLoadMore}
+          onClick={loadMore}
           disabled={!active || !state.hasMore || state.loading}
           className="rounded-md border border-stone-300 bg-white px-2.5 py-1 font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -632,17 +788,24 @@ function FeedCard({
           {String((state.error as Error)?.message ?? state.error)}
         </p>
       ) : null}
+
+      <div>
+        <p className="mb-1 text-[11px] font-medium text-stone-500">
+          Registro de actividad
+        </p>
+        <LogPanel log={log} logRef={logRef} />
+      </div>
     </div>
   );
 }
 
-function ImageParamsCard({
-  paramsStore,
-  imageUrlStore,
-}: {
-  paramsStore: WritableAtom<ImageParams>;
-  imageUrlStore: ReadableAtom<string>;
-}) {
+function ImageParamsCard() {
+  // También es independiente: no depende de que ningún otro ejemplo se
+  // haya montado, y tampoco tiene ciclo de vida propio que gatear.
+  const { $params: paramsStore, $imageUrl: imageUrlStore } = useMemo(
+    () => createImageParamsStore(),
+    [],
+  );
   const params = useLiveValue(paramsStore);
   const imageUrl = useLiveValue(imageUrlStore);
   const [text, setText] = useState(params.text);
@@ -714,129 +877,30 @@ function ImageParamsCard({
 }
 
 export default function MyStateDemo() {
-  const [active, setActive] = useState(false);
-  const [log, setLog] = useState<Entry[]>([]);
-  const [generation, setGeneration] = useState(0);
-  const logRef = useRef<HTMLDivElement>(null);
-  const logIdRef = useRef(0);
-
-  const pushLog = (text: string) => {
-    logIdRef.current += 1;
-    setLog((prev) => [
-      ...prev.slice(-49),
-      {
-        id: logIdRef.current,
-        time: new Date().toLocaleTimeString("es-CL", { hour12: false }),
-        text,
-      },
-    ]);
-  };
-
-  const { stores, retries, configs, $home, sse, feed, image } = useMemo(() => {
-    const configs: Record<string, Config> = {};
-    const stores: Record<string, WritableAtom<Resource<unknown>>> = {};
-    const retries: Record<string, () => void> = {};
-    for (const def of RESOURCE_DEFS) {
-      // nanostores espera ~1s (STORE_UNMOUNT_DELAY) tras el último
-      // unsubscribe antes de llamar el onUnmount; el delay simulado debe
-      // ser mayor a eso para que desmontar durante la carga demuestre un
-      // abort real y no una simple carrera ganada por el fetch.
-      const config: Config = { forceError: false, delayMs: 2200 };
-      configs[def.key] = config;
-      const demoStore = createDemoStore(def, config, pushLog);
-      stores[def.key] = demoStore.$resource;
-      retries[def.key] = demoStore.retry;
-    }
-    const $home = computed(
-      RESOURCE_DEFS.map((d) => stores[d.key]),
-      (...states) =>
-        Object.fromEntries(RESOURCE_DEFS.map((d, i) => [d.key, states[i]])),
-    );
-    // $liveMetrics no entra a $home: no es un recurso de una sola
-    // resolución, pero comparte el mismo contrato onMount/onUnmount.
-    const sse = createSseDemoStore(pushLog);
-    // $feed tampoco entra a $home: es un store incremental (paginado),
-    // no un Resource<T> de una sola resolución.
-    const feed = createFeedStore(pushLog);
-    // $params/$imageUrl tampoco entra a $home: no representa un recurso
-    // remoto en absoluto, es estado local derivado sincrónicamente.
-    const image = createImageParamsStore();
-    return { stores, retries, configs, $home, sse, feed, image };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generation]);
-
-  useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [log]);
-
-  const idleHome = useMemo(
-    () =>
-      Object.fromEntries(RESOURCE_DEFS.map((d) => [d.key, [true, null, null]])),
-    [],
-  );
-  const homeState = useGatedValue($home, active, idleHome);
-
-  const handleToggleSubscribe = () => {
-    setActive((prev) => {
-      const next = !prev;
-      pushLog(
-        next
-          ? "$home.subscribe() → primer subscriptor, se activa onMount de cada recurso"
-          : "$home unsubscribe → sin subscriptores, se limpia cada recurso",
-      );
-      return next;
-    });
-  };
-
-  const handleRemount = () => {
-    setActive(false);
-    setLog([]);
-    setGeneration((g) => g + 1);
-    pushLog("Stores recreados desde cero (simula recargar la página)");
-  };
+  // El único estado que vive en el padre: un contador para forzar un
+  // remount completo de cada tarjeta (cada una crea sus propios stores,
+  // su propio log y su propio "montado/desmontado" — nada se comparte).
+  const [resetKey, setResetKey] = useState(0);
 
   return (
     <div className="flex flex-col gap-6 rounded-xl border border-stone-200 bg-stone-50/50 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-stone-800">
-            $home = computed([$session, $recentArticles, $serverHealth])
-          </p>
-          <p className="text-xs text-stone-500">
-            Nada se pide hasta que alguien se suscribe a <code>$home</code>.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRemount}
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
-          >
-            Recargar página
-          </button>
-          <button
-            onClick={handleToggleSubscribe}
-            className={
-              "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors " +
-              (active
-                ? "bg-stone-900 text-white hover:bg-stone-700"
-                : "bg-emerald-600 text-white hover:bg-emerald-500")
-            }
-          >
-            {active ? "Desmontar (unsubscribe)" : "Montar HomePage (subscribe)"}
-          </button>
-        </div>
+        <p className="text-xs text-stone-500">
+          Cada tarjeta de abajo es un ejemplo independiente: su propio botón
+          montar/desmontar, su propio registro de actividad, y su propio campo
+          con el último estado. Ninguna depende de que otra esté montada.
+        </p>
+        <button
+          onClick={() => setResetKey((k) => k + 1)}
+          className="shrink-0 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
+        >
+          Reiniciar todos los ejemplos
+        </button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {RESOURCE_DEFS.map((def) => (
-          <ResourceCard
-            key={`${def.key}-${generation}`}
-            def={def}
-            store={stores[def.key]}
-            config={configs[def.key]}
-            active={active}
-            onRetry={retries[def.key]}
-          />
+          <ResourceCard key={`${def.key}-${resetKey}`} def={def} />
         ))}
       </div>
 
@@ -846,13 +910,7 @@ export default function MyStateDemo() {
           <code>onUnmount</code>, un recurso que no se resuelve una sola vez
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          <SseCard
-            key={`sse-${generation}`}
-            store={sse.$resource}
-            config={sse.config}
-            active={active}
-            onReconnect={sse.reconnect}
-          />
+          <SseCard key={`sse-${resetKey}`} />
         </div>
       </div>
 
@@ -862,13 +920,7 @@ export default function MyStateDemo() {
           el estado que permite continuar la paginación
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          <FeedCard
-            key={`feed-${generation}`}
-            store={feed.$feed}
-            config={feed.config}
-            active={active}
-            onLoadMore={feed.loadMore}
-          />
+          <FeedCard key={`feed-${resetKey}`} />
         </div>
       </div>
 
@@ -877,42 +929,7 @@ export default function MyStateDemo() {
           Parámetros reactivos: <code>computed</code> sin <code>onMount</code>,
           no hay nada remoto que pedir perezosamente
         </p>
-        <ImageParamsCard
-          key={`image-${generation}`}
-          paramsStore={image.$params}
-          imageUrlStore={image.$imageUrl}
-        />
-      </div>
-
-      <div>
-        <p className="mb-1 text-xs font-medium text-stone-500">
-          Estado combinado de la página ($home.get())
-        </p>
-        <pre className="max-h-32 overflow-auto rounded-md bg-stone-900 p-3 text-[11px] leading-relaxed text-stone-100">
-          {JSON.stringify(homeState, null, 2)}
-        </pre>
-      </div>
-
-      <div>
-        <p className="mb-1 text-xs font-medium text-stone-500">
-          Registro de actividad (onMount / onStop / t())
-        </p>
-        <div
-          ref={logRef}
-          className="h-32 overflow-y-auto rounded-md border border-stone-200 bg-white p-2 font-mono text-[11px] leading-relaxed text-stone-600"
-        >
-          {log.length === 0 && (
-            <p className="text-stone-400">
-              Sin actividad todavía. Monta la página para ver los fetch
-              dispararse.
-            </p>
-          )}
-          {log.map((entry) => (
-            <p key={entry.id}>
-              <span className="text-stone-400">{entry.time}</span> {entry.text}
-            </p>
-          ))}
-        </div>
+        <ImageParamsCard key={`image-${resetKey}`} />
       </div>
     </div>
   );

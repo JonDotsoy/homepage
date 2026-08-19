@@ -691,19 +691,23 @@ $home.listen((state) => {
         Pruébalo: el patrón corriendo en vivo
       </h2>
       <p class="text-stone-600 leading-relaxed mb-4">
-        La demo de abajo usa un store real de nanostores (variante atomizada)
-        con tres recursos simulados: <code>session</code>,{" "}
-        <code>recentArticles</code> y <code>serverHealth</code>. Móntalo para
-        ver el <code>onMount</code> disparar los fetch, fuerza un error en algún
-        recurso, o desmóntalo para ver el <code>onUnmount</code> abortando el fetch
-        en curso con <code>AbortController</code> (mira el registro de actividad).
-        También incluye <code>$liveMetrics</code>, un recurso que simula un{" "}
-        <code>EventSource</code> (SSE): en vez de resolver una vez, empuja mensajes
-        mientras está montado, y <code>onUnmount</code> cierra la conexión en vez
-        de abortar un fetch puntual. Y <code>$feed</code>, una lista con scroll
-        infinito real: desplázate dentro de la lista para pedir la siguiente
-        página automáticamente. Por último, <code>$imageUrl</code>: sin montar
-        nada, escribe un texto y mira la URL de un placeholder actualizarse
+        La demo de abajo usa stores reales de nanostores, y{" "}
+        <strong>cada tarjeta es un ejemplo independiente</strong>: tiene su
+        propio botón montar/desmontar, su propio registro de actividad, y su
+        propio campo con el último estado — montar una no dispara ni afecta a
+        las demás. <code>session</code>, <code>recentArticles</code>{" "}
+        y <code>serverHealth</code> son tres recursos simulados: móntalos para ver
+        <code>onMount</code> disparar el fetch, fuerza un error, o desmóntalos para
+        ver <code>onUnmount</code> abortando el fetch en curso con <code
+          >AbortController</code
+        >. <code>$liveMetrics</code>{" "}
+        simula un <code>EventSource</code> (SSE): en vez de resolver una vez, empuja
+        mensajes mientras está montado, y <code>onUnmount</code>{" "}
+        cierra la conexión en vez de abortar un fetch puntual.{" "}
+        <code>$feed</code> es una lista con scroll infinito real: desplázate dentro
+        de la lista para pedir la siguiente página automáticamente. Y <code
+          >$imageUrl</code
+        > no tiene mount: escribe un texto y mira la URL de un placeholder actualizarse
         sola.
       </p>
       <MyStateDemo client:load />
@@ -763,8 +767,8 @@ $home.listen((state) => {
         <code>signal.aborted</code> antes de aplicar el resultado: evita que la respuesta
         de un fetch ya cancelado sobrescriba un estado más reciente (por ejemplo,
         el de un reintento posterior). La demo de más arriba implementa exactamente
-        este patrón — desmóntala mientras un recurso está cargando y revisa el registro
-        de actividad.
+        este patrón — desmóntalo mientras un recurso está cargando y revisa su propio
+        registro de actividad.
       </p>
     </section>
 
@@ -790,8 +794,8 @@ $home.listen((state) => {
         va a leer — un leak silencioso y fácil de pasar por alto. La demo de
         arriba simula esto con{" "}
         <code>$liveMetrics</code>: móntala para ver los mensajes llegar cada
-        ~700ms, fuerza un corte de conexión, o desmóntala y revisa el registro
-        de actividad para confirmar el <code>source.close()</code>.
+        ~700ms, fuerza un corte de conexión, o desmóntala y revisa su propio
+        registro de actividad para confirmar el <code>source.close()</code>.
       </p>
     </section>
 
