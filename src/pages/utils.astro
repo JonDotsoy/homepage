@@ -1,0 +1,28 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+---
+
+<DefaultLayout
+  title="Utils — Herramientas"
+  description="Colección de pequeñas herramientas client-only."
+  lang="es"
+>
+  <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-16">
+    <div class="flex flex-col gap-2">
+      <h1 class="text-2xl font-semibold text-foreground">Utils</h1>
+      <p class="text-sm text-muted-foreground">
+        Herramientas pequeñas que corren en tu navegador.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <a
+        href="/tools/inspect-url"
+        class="flex flex-col items-center gap-2 rounded-md border border-border p-4 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        <span class="text-3xl" aria-hidden="true">🔗</span>
+        <span class="text-sm font-medium text-foreground">URL</span>
+      </a>
+    </div>
+  </main>
+</DefaultLayout>
