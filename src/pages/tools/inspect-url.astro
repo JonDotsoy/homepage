@@ -1,6 +1,7 @@
 ---
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import InspectUrl from "@/components/tools/InspectUrl.tsx";
+import { ArrowLeft } from "lucide-react";
 ---
 
 <DefaultLayout
@@ -9,6 +10,16 @@ import InspectUrl from "@/components/tools/InspectUrl.tsx";
   lang="es"
 >
   <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-16">
+    <header>
+      <a
+        href="/utils"
+        class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Utils
+      </a>
+    </header>
+
     <div class="flex flex-col gap-2">
       <h1 class="text-2xl font-semibold text-foreground">Inspect URL</h1>
       <p class="text-sm text-muted-foreground">
