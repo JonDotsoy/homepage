@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type UrlParam = { key: string; value: string };
@@ -40,15 +41,59 @@ function parseUrl(value: string): UrlDetails | null {
   }
 }
 
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
+
+  React.useEffect(() => {
+    return () => clearTimeout(timeoutRef.current);
+  }, []);
+
+  const handleCopy = async () => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Ignore clipboard failures (unsupported browser, missing permission).
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={!value}
+      aria-label={copied ? "Copiado" : "Copiar"}
+      title={copied ? "Copiado" : "Copiar"}
+      className={cn(
+        "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40",
+      )}
+    >
+      {copied ? (
+        <Check className="size-3.5 text-foreground" />
+      ) : (
+        <Copy className="size-3.5" />
+      )}
+    </button>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1 border-b border-border py-3 last:border-b-0">
       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <span className="break-all font-mono text-sm text-foreground">
-        {value || <span className="text-muted-foreground">(vacío)</span>}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="break-all font-mono text-sm text-foreground">
+          {value || <span className="text-muted-foreground">(vacío)</span>}
+        </span>
+        <CopyButton value={value} />
+      </div>
     </div>
   );
 }
@@ -79,11 +124,14 @@ function ParamsTable({
               <span className="font-mono text-xs text-muted-foreground">
                 {param.key}
               </span>
-              <span className="break-all font-mono text-sm text-foreground">
-                {param.value || (
-                  <span className="text-muted-foreground">(vacío)</span>
-                )}
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="break-all font-mono text-sm text-foreground">
+                  {param.value || (
+                    <span className="text-muted-foreground">(vacío)</span>
+                  )}
+                </span>
+                <CopyButton value={param.value} />
+              </div>
             </li>
           ))}
         </ul>
