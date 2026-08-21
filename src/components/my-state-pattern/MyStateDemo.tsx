@@ -578,7 +578,7 @@ function ResourceCard({ def }: { def: ResourceDef }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <code className="text-sm font-semibold text-stone-800">${def.key}</code>
         <StatusPill state={state} />
@@ -676,7 +676,7 @@ function SseCard() {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <code className="text-sm font-semibold text-stone-800">
           $liveMetrics
@@ -804,7 +804,7 @@ function FeedCard() {
   }, [active, state.hasMore, state.loading, loadMore]);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <code className="text-sm font-semibold text-stone-800">$feed</code>
         {state.error ? (
@@ -909,16 +909,16 @@ function ImageParamsCard() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row">
       <img
         src={imageUrl}
         alt={params.text || "placeholder"}
         width={params.width}
         height={params.height}
-        className="h-auto w-full max-w-[200px] rounded-md border border-stone-100 sm:w-1/2"
+        className="h-auto w-full max-w-[200px] shrink-0 rounded-md border border-stone-100 sm:w-1/2"
       />
 
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center justify-between">
           <code className="text-sm font-semibold text-stone-800">
             $imageUrl
@@ -1003,7 +1003,7 @@ function SearchCard() {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <code className="text-sm font-semibold text-stone-800">$search</code>
         <StatusPill state={[loading, error, data]} />
