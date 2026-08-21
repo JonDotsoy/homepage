@@ -1,0 +1,22 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import InspectUrl from "@/components/tools/InspectUrl.tsx";
+---
+
+<DefaultLayout
+  title="Inspect URL — Herramientas"
+  description="Herramienta client-only para inspeccionar los componentes de una URL: schema, host, path, query params y search."
+  lang="es"
+>
+  <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-16">
+    <div class="flex flex-col gap-2">
+      <h1 class="text-2xl font-semibold text-foreground">Inspect URL</h1>
+      <p class="text-sm text-muted-foreground">
+        Pega una URL para ver su schema, host, path, query params y search. Todo
+        se procesa en tu navegador.
+      </p>
+    </div>
+
+    <InspectUrl client:only="react" />
+  </main>
+</DefaultLayout>
