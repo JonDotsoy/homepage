@@ -144,6 +144,17 @@ export default function InspectUrl() {
   const [input, setInput] = React.useState("");
   const [touched, setTouched] = React.useState(false);
 
+  React.useEffect(() => {
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, ""),
+    );
+    const urlFromHash = hashParams.get("url");
+    if (urlFromHash) {
+      setInput(urlFromHash);
+      setTouched(true);
+    }
+  }, []);
+
   const details = React.useMemo(() => parseUrl(input.trim()), [input]);
   const isInvalid = touched && input.trim() !== "" && !details;
 
