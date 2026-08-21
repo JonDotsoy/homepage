@@ -5,6 +5,8 @@ import { useHashParam } from "@/lib/useHashParams";
 
 type UrlParam = { key: string; value: string };
 
+type HashFormat = "json" | "url-search-params";
+
 type UrlDetails = {
   schema: string;
   host: string;
@@ -12,6 +14,7 @@ type UrlDetails = {
   search: string;
   hash: string;
   queryParams: UrlParam[];
+  hashFormat: HashFormat;
   hashParams: UrlParam[];
 };
 
@@ -22,11 +25,53 @@ function toParams(searchParams: URLSearchParams): UrlParam[] {
   }));
 }
 
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function tryParseJsonObject(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function parseHashParams(hashContent: string): {
+  format: HashFormat;
+  params: UrlParam[];
+} {
+  const jsonObject = tryParseJsonObject(safeDecodeURIComponent(hashContent));
+  if (jsonObject) {
+    return {
+      format: "json",
+      params: Object.entries(jsonObject).map(([key, value]) => ({
+        key,
+        value: typeof value === "string" ? value : JSON.stringify(value),
+      })),
+    };
+  }
+
+  return {
+    format: "url-search-params",
+    params: toParams(new URLSearchParams(hashContent)),
+  };
+}
+
 function parseUrl(value: string): UrlDetails | null {
   try {
     const url = new URL(value);
     const hashContent = url.hash.replace(/^#/, "");
-    const hashParams = toParams(new URLSearchParams(hashContent));
+    const { format: hashFormat, params: hashParams } =
+      parseHashParams(hashContent);
 
     return {
       schema: url.protocol.replace(/:$/, ""),
@@ -35,12 +80,18 @@ function parseUrl(value: string): UrlDetails | null {
       search: url.search,
       hash: url.hash,
       queryParams: toParams(url.searchParams),
+      hashFormat,
       hashParams,
     };
   } catch {
     return null;
   }
 }
+
+const hashFormatLabel: Record<HashFormat, string> = {
+  json: "JSON",
+  "url-search-params": "URL Search Params",
+};
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = React.useState(false);
@@ -195,7 +246,7 @@ export default function InspectUrl() {
           />
 
           <ParamsTable
-            title="Hash params"
+            title={`Hash params (${hashFormatLabel[details.hashFormat]})`}
             params={details.hashParams}
             emptyMessage="No hay parámetros en el hash."
           />
