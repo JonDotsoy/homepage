@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHashParam } from "@/lib/useHashParams";
 
 type UrlParam = { key: string; value: string };
 
@@ -141,19 +142,8 @@ function ParamsTable({
 }
 
 export default function InspectUrl() {
-  const [input, setInput] = React.useState("");
-  const [touched, setTouched] = React.useState(false);
-
-  React.useEffect(() => {
-    const hashParams = new URLSearchParams(
-      window.location.hash.replace(/^#/, ""),
-    );
-    const urlFromHash = hashParams.get("url");
-    if (urlFromHash) {
-      setInput(urlFromHash);
-      setTouched(true);
-    }
-  }, []);
+  const [input, setInput] = useHashParam("url");
+  const [touched, setTouched] = React.useState(input !== "");
 
   const details = React.useMemo(() => parseUrl(input.trim()), [input]);
   const isInvalid = touched && input.trim() !== "" && !details;
