@@ -96,11 +96,17 @@ const hashFormatLabel: Record<HashFormat, string> = {
 type UrlField = "schema" | "host" | "path" | "search" | "hash";
 
 function applyFieldToUrl(base: URL, field: UrlField, value: string): string {
+  if (field === "schema") {
+    // `URL#protocol` refuses to switch between special (http, https, ftp,
+    // file, ws, wss) and non-special schemes, so arbitrary values (e.g.
+    // "mailto", "foo") are rewritten by hand instead.
+    const scheme = value.replace(/:+$/, "");
+    const remainder = base.href.slice(base.protocol.length);
+    return `${scheme}:${remainder}`;
+  }
+
   const url = new URL(base.toString());
   switch (field) {
-    case "schema":
-      url.protocol = value.endsWith(":") ? value : `${value}:`;
-      break;
     case "host":
       url.host = value;
       break;
