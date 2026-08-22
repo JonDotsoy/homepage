@@ -175,6 +175,29 @@ function useInputUrl() {
     [url, setUrl],
   );
 
+  const updateQueryParam = React.useCallback(
+    (index: number, field: "key" | "value", value: string) => {
+      let base: URL;
+      try {
+        base = new URL(url.trim());
+      } catch {
+        return;
+      }
+      const params = toParams(base.searchParams);
+      if (!params[index]) return;
+      params[index] = { ...params[index], [field]: value };
+
+      const nextSearchParams = new URLSearchParams();
+      for (const param of params) {
+        nextSearchParams.append(param.key, param.value);
+      }
+      base.search = nextSearchParams.toString();
+      setUrl(base.toString());
+      setTouched(true);
+    },
+    [url, setUrl],
+  );
+
   return {
     url,
     setUrl,
@@ -183,6 +206,7 @@ function useInputUrl() {
     setTouched,
     updateField,
     addQueryParam,
+    updateQueryParam,
   };
 }
 
@@ -322,11 +346,13 @@ function ParamsTable({
   params,
   emptyMessage,
   onAdd,
+  onUpdate,
 }: {
   title: string;
   params: UrlParam[];
   emptyMessage: string;
   onAdd?: (key: string, value: string) => void;
+  onUpdate?: (index: number, field: "key" | "value", value: string) => void;
 }) {
   return (
     <div className="rounded-md border border-border p-4">
@@ -337,24 +363,55 @@ function ParamsTable({
         <p className="mt-2 text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
-          {params.map((param, index) => (
-            <li
-              key={`${param.key}-${index}`}
-              className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0 last:pb-0"
-            >
-              <span className="font-mono text-xs text-muted-foreground">
-                {param.key}
-              </span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="break-all font-mono text-sm text-foreground">
-                  {param.value || (
-                    <span className="text-muted-foreground">(vacío)</span>
-                  )}
-                </span>
+          {params.map((param, index) =>
+            onUpdate ? (
+              <li
+                key={`${param.key}-${index}`}
+                className="flex items-center gap-2 border-b border-border pb-2 last:border-b-0 last:pb-0"
+              >
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="key"
+                  value={param.key}
+                  onChange={(event) =>
+                    onUpdate(index, "key", event.target.value)
+                  }
+                  className="w-1/3 shrink-0 bg-transparent font-mono text-xs text-muted-foreground outline-none placeholder:text-muted-foreground"
+                />
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="(vacío)"
+                  value={param.value}
+                  onChange={(event) =>
+                    onUpdate(index, "value", event.target.value)
+                  }
+                  className="min-w-0 flex-1 break-all bg-transparent font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                />
                 <CopyButton value={param.value} />
-              </div>
-            </li>
-          ))}
+              </li>
+            ) : (
+              <li
+                key={`${param.key}-${index}`}
+                className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0 last:pb-0"
+              >
+                <span className="font-mono text-xs text-muted-foreground">
+                  {param.key}
+                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="break-all font-mono text-sm text-foreground">
+                    {param.value || (
+                      <span className="text-muted-foreground">(vacío)</span>
+                    )}
+                  </span>
+                  <CopyButton value={param.value} />
+                </div>
+              </li>
+            ),
+          )}
         </ul>
       )}
       {onAdd && <AddParamRow onAdd={onAdd} />}
@@ -371,6 +428,7 @@ export default function InspectUrl() {
     setTouched,
     updateField,
     addQueryParam,
+    updateQueryParam,
   } = useInputUrl();
   const isInvalid = touched && url.trim() !== "" && !details;
 
@@ -449,6 +507,7 @@ export default function InspectUrl() {
             params={details.queryParams}
             emptyMessage="No hay parámetros de búsqueda."
             onAdd={addQueryParam}
+            onUpdate={updateQueryParam}
           />
 
           <ParamsTable
