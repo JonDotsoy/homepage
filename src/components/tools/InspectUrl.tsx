@@ -92,6 +92,30 @@ function parseUrl(value: string): UrlDetails | null {
   }
 }
 
+function tryParseJsonValue(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function serializeHashParams(format: HashFormat, params: UrlParam[]): string {
+  if (format === "json") {
+    const jsonObject: Record<string, unknown> = {};
+    for (const param of params) {
+      jsonObject[param.key] = tryParseJsonValue(param.value);
+    }
+    return JSON.stringify(jsonObject);
+  }
+
+  const searchParams = new URLSearchParams();
+  for (const param of params) {
+    searchParams.append(param.key, param.value);
+  }
+  return searchParams.toString();
+}
+
 const hashFormatLabel: Record<HashFormat, string> = {
   json: "JSON",
   "url-search-params": "URL Search Params",
@@ -198,6 +222,45 @@ function useInputUrl() {
     [url, setUrl],
   );
 
+  const addHashParam = React.useCallback(
+    (key: string, value: string) => {
+      let base: URL;
+      try {
+        base = new URL(url.trim());
+      } catch {
+        return;
+      }
+      const { format, params } = parseHashParams(
+        base.hash.replace(/^#/, ""),
+      );
+      params.push({ key, value });
+      base.hash = serializeHashParams(format, params);
+      setUrl(base.toString());
+      setTouched(true);
+    },
+    [url, setUrl],
+  );
+
+  const updateHashParam = React.useCallback(
+    (index: number, field: "key" | "value", value: string) => {
+      let base: URL;
+      try {
+        base = new URL(url.trim());
+      } catch {
+        return;
+      }
+      const { format, params } = parseHashParams(
+        base.hash.replace(/^#/, ""),
+      );
+      if (!params[index]) return;
+      params[index] = { ...params[index], [field]: value };
+      base.hash = serializeHashParams(format, params);
+      setUrl(base.toString());
+      setTouched(true);
+    },
+    [url, setUrl],
+  );
+
   return {
     url,
     setUrl,
@@ -207,6 +270,8 @@ function useInputUrl() {
     updateField,
     addQueryParam,
     updateQueryParam,
+    addHashParam,
+    updateHashParam,
   };
 }
 
@@ -429,6 +494,8 @@ export default function InspectUrl() {
     updateField,
     addQueryParam,
     updateQueryParam,
+    addHashParam,
+    updateHashParam,
   } = useInputUrl();
   const isInvalid = touched && url.trim() !== "" && !details;
 
@@ -514,6 +581,8 @@ export default function InspectUrl() {
             title={`Hash params (${hashFormatLabel[details.hashFormat]})`}
             params={details.hashParams}
             emptyMessage="No hay parámetros en el hash."
+            onAdd={addHashParam}
+            onUpdate={updateHashParam}
           />
         </div>
       )}
