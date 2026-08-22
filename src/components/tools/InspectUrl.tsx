@@ -93,6 +93,53 @@ const hashFormatLabel: Record<HashFormat, string> = {
   "url-search-params": "URL Search Params",
 };
 
+type UrlField = "schema" | "host" | "path" | "search" | "hash";
+
+function applyFieldToUrl(base: URL, field: UrlField, value: string): string {
+  const url = new URL(base.toString());
+  switch (field) {
+    case "schema":
+      url.protocol = value.endsWith(":") ? value : `${value}:`;
+      break;
+    case "host":
+      url.host = value;
+      break;
+    case "path":
+      url.pathname = value.startsWith("/") ? value : `/${value}`;
+      break;
+    case "search":
+      url.search = value;
+      break;
+    case "hash":
+      url.hash = value;
+      break;
+  }
+  return url.toString();
+}
+
+function useInputUrl() {
+  const [url, setUrl] = useHashParam("url");
+  const [touched, setTouched] = React.useState(url !== "");
+
+  const details = React.useMemo(() => parseUrl(url.trim()), [url]);
+
+  const updateField = React.useCallback(
+    (field: UrlField, value: string) => {
+      let base: URL;
+      try {
+        base = new URL(url.trim());
+      } catch {
+        return;
+      }
+      setUrl(applyFieldToUrl(base, field, value));
+      setTouched(true);
+    },
+    [url, setUrl],
+  );
+
+  return { url, setUrl, details, touched, setTouched, updateField };
+}
+
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
@@ -134,16 +181,34 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-1 border-b border-border py-3 last:border-b-0">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <label
+        htmlFor={`field-${label}`}
+        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
         {label}
-      </span>
+      </label>
       <div className="flex items-center justify-between gap-2">
-        <span className="break-all font-mono text-sm text-foreground">
-          {value || <span className="text-muted-foreground">(vacío)</span>}
-        </span>
+        <input
+          id={`field-${label}`}
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="(vacío)"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full break-all bg-transparent font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
         <CopyButton value={value} />
       </div>
     </div>
@@ -193,11 +258,9 @@ function ParamsTable({
 }
 
 export default function InspectUrl() {
-  const [input, setInput] = useHashParam("url");
-  const [touched, setTouched] = React.useState(input !== "");
-
-  const details = React.useMemo(() => parseUrl(input.trim()), [input]);
-  const isInvalid = touched && input.trim() !== "" && !details;
+  const { url, setUrl, details, touched, setTouched, updateField } =
+    useInputUrl();
+  const isInvalid = touched && url.trim() !== "" && !details;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -215,8 +278,8 @@ export default function InspectUrl() {
           autoComplete="off"
           spellCheck={false}
           placeholder="https://example.com/path?foo=bar"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
           onBlur={() => setTouched(true)}
           className={cn(
             "w-full rounded-md border bg-background px-3 py-2 font-mono text-sm shadow-xs outline-none transition-colors",
@@ -232,11 +295,31 @@ export default function InspectUrl() {
       {details && (
         <div className="flex flex-col gap-4">
           <div className="rounded-md border border-border p-4">
-            <Field label="Schema" value={details.schema} />
-            <Field label="Host" value={details.host} />
-            <Field label="Path" value={details.path} />
-            <Field label="Search" value={details.search} />
-            <Field label="Hash" value={details.hash} />
+            <Field
+              label="Schema"
+              value={details.schema}
+              onChange={(value) => updateField("schema", value)}
+            />
+            <Field
+              label="Host"
+              value={details.host}
+              onChange={(value) => updateField("host", value)}
+            />
+            <Field
+              label="Path"
+              value={details.path}
+              onChange={(value) => updateField("path", value)}
+            />
+            <Field
+              label="Search"
+              value={details.search}
+              onChange={(value) => updateField("search", value)}
+            />
+            <Field
+              label="Hash"
+              value={details.hash}
+              onChange={(value) => updateField("hash", value)}
+            />
           </div>
 
           <ParamsTable
