@@ -9,6 +9,8 @@ type HashFormat = "json" | "url-search-params";
 
 type UrlDetails = {
   schema: string;
+  username: string;
+  password: string;
   host: string;
   path: string;
   search: string;
@@ -75,6 +77,8 @@ function parseUrl(value: string): UrlDetails | null {
 
     return {
       schema: url.protocol.replace(/:$/, ""),
+      username: url.username,
+      password: url.password,
       host: url.host,
       path: url.pathname,
       search: url.search,
@@ -93,7 +97,14 @@ const hashFormatLabel: Record<HashFormat, string> = {
   "url-search-params": "URL Search Params",
 };
 
-type UrlField = "schema" | "host" | "path" | "search" | "hash";
+type UrlField =
+  | "schema"
+  | "username"
+  | "password"
+  | "host"
+  | "path"
+  | "search"
+  | "hash";
 
 function applyFieldToUrl(base: URL, field: UrlField, value: string): string {
   if (field === "schema") {
@@ -107,6 +118,12 @@ function applyFieldToUrl(base: URL, field: UrlField, value: string): string {
 
   const url = new URL(base.toString());
   switch (field) {
+    case "username":
+      url.username = value;
+      break;
+    case "password":
+      url.password = value;
+      break;
     case "host":
       url.host = value;
       break;
@@ -305,6 +322,16 @@ export default function InspectUrl() {
               label="Schema"
               value={details.schema}
               onChange={(value) => updateField("schema", value)}
+            />
+            <Field
+              label="Username"
+              value={details.username}
+              onChange={(value) => updateField("username", value)}
+            />
+            <Field
+              label="Password"
+              value={details.password}
+              onChange={(value) => updateField("password", value)}
             />
             <Field
               label="Host"
