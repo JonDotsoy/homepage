@@ -160,7 +160,30 @@ function useInputUrl() {
     [url, setUrl],
   );
 
-  return { url, setUrl, details, touched, setTouched, updateField };
+  const addQueryParam = React.useCallback(
+    (key: string, value: string) => {
+      let base: URL;
+      try {
+        base = new URL(url.trim());
+      } catch {
+        return;
+      }
+      base.searchParams.append(key, value);
+      setUrl(base.toString());
+      setTouched(true);
+    },
+    [url, setUrl],
+  );
+
+  return {
+    url,
+    setUrl,
+    details,
+    touched,
+    setTouched,
+    updateField,
+    addQueryParam,
+  };
 }
 
 function CopyButton({ value }: { value: string }) {
@@ -238,14 +261,72 @@ function Field({
   );
 }
 
+function AddParamRow({
+  onAdd,
+}: {
+  onAdd: (key: string, value: string) => void;
+}) {
+  const [draftKey, setDraftKey] = React.useState("");
+  const [draftValue, setDraftValue] = React.useState("");
+
+  const handleAdd = () => {
+    // A key isn't required: the draft can be added with just a value (or
+    // even both empty) and the resulting param is appended as-is.
+    onAdd(draftKey, draftValue);
+    setDraftKey("");
+    setDraftValue("");
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <input
+        type="text"
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="key"
+        value={draftKey}
+        onChange={(event) => setDraftKey(event.target.value)}
+        onKeyDown={handleKeyDown}
+        className="w-1/3 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring"
+      />
+      <input
+        type="text"
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="value"
+        value={draftValue}
+        onChange={(event) => setDraftValue(event.target.value)}
+        onKeyDown={handleKeyDown}
+        className="flex-1 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring"
+      />
+      <button
+        type="button"
+        onClick={handleAdd}
+        className="shrink-0 rounded-md border border-input px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        Agregar
+      </button>
+    </div>
+  );
+}
+
 function ParamsTable({
   title,
   params,
   emptyMessage,
+  onAdd,
 }: {
   title: string;
   params: UrlParam[];
   emptyMessage: string;
+  onAdd?: (key: string, value: string) => void;
 }) {
   return (
     <div className="rounded-md border border-border p-4">
@@ -276,13 +357,21 @@ function ParamsTable({
           ))}
         </ul>
       )}
+      {onAdd && <AddParamRow onAdd={onAdd} />}
     </div>
   );
 }
 
 export default function InspectUrl() {
-  const { url, setUrl, details, touched, setTouched, updateField } =
-    useInputUrl();
+  const {
+    url,
+    setUrl,
+    details,
+    touched,
+    setTouched,
+    updateField,
+    addQueryParam,
+  } = useInputUrl();
   const isInvalid = touched && url.trim() !== "" && !details;
 
   return (
@@ -359,6 +448,7 @@ export default function InspectUrl() {
             title="Query params"
             params={details.queryParams}
             emptyMessage="No hay parámetros de búsqueda."
+            onAdd={addQueryParam}
           />
 
           <ParamsTable
