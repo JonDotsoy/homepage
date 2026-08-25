@@ -136,6 +136,12 @@ function applyFieldToUrl(base: URL, field: UrlField, value: string): string {
     // file, ws, wss) and non-special schemes, so arbitrary values (e.g.
     // "mailto", "foo") are rewritten by hand instead.
     const scheme = value.replace(/:+$/, "");
+    if (!scheme) {
+      // An empty scheme would produce an unparsable url (e.g. "://host"),
+      // wiping out the whole details panel. Ignore it, same as the native
+      // setters do for an empty host below.
+      return base.toString();
+    }
     const remainder = base.href.slice(base.protocol.length);
     return `${scheme}:${remainder}`;
   }
@@ -316,6 +322,56 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+// A plain controlled <input> whose `value` is fully derived from the parsed
+// url snaps back mid-keystroke whenever the browser's URL setters normalize
+// what was just typed (e.g. a trailing ":" with no port yet is stripped from
+// `host`), and it loses focus whenever the outer list re-keys on content
+// change. This keeps showing exactly what the user types while focused, and
+// only resyncs to the canonical (possibly normalized) value on blur.
+function EditableText({
+  id,
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className: string;
+}) {
+  const [local, setLocal] = React.useState(value);
+  const focusedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!focusedRef.current) setLocal(value);
+  }, [value]);
+
+  return (
+    <input
+      id={id}
+      type="text"
+      autoComplete="off"
+      spellCheck={false}
+      placeholder={placeholder}
+      value={local}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        setLocal(value);
+      }}
+      onChange={(event) => {
+        setLocal(event.target.value);
+        onChange(event.target.value);
+      }}
+      className={className}
+    />
+  );
+}
+
 function Field({
   label,
   value,
@@ -334,14 +390,11 @@ function Field({
         {label}
       </label>
       <div className="flex items-center justify-between gap-2">
-        <input
+        <EditableText
           id={`field-${label}`}
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
           placeholder="(vacío)"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={onChange}
           className="w-full break-all bg-transparent font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
         <CopyButton value={value} />
@@ -431,36 +484,26 @@ function ParamsTable({
           {params.map((param, index) =>
             onUpdate ? (
               <li
-                key={`${param.key}-${index}`}
+                key={index}
                 className="flex items-center gap-2 border-b border-border pb-2 last:border-b-0 last:pb-0"
               >
-                <input
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
+                <EditableText
                   placeholder="key"
                   value={param.key}
-                  onChange={(event) =>
-                    onUpdate(index, "key", event.target.value)
-                  }
+                  onChange={(value) => onUpdate(index, "key", value)}
                   className="w-1/3 shrink-0 bg-transparent font-mono text-xs text-muted-foreground outline-none placeholder:text-muted-foreground"
                 />
-                <input
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
+                <EditableText
                   placeholder="(vacío)"
                   value={param.value}
-                  onChange={(event) =>
-                    onUpdate(index, "value", event.target.value)
-                  }
+                  onChange={(value) => onUpdate(index, "value", value)}
                   className="min-w-0 flex-1 break-all bg-transparent font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground"
                 />
                 <CopyButton value={param.value} />
               </li>
             ) : (
               <li
-                key={`${param.key}-${index}`}
+                key={index}
                 className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0 last:pb-0"
               >
                 <span className="font-mono text-xs text-muted-foreground">
