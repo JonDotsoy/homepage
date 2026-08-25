@@ -1,0 +1,1048 @@
+---
+import { Code } from "astro:components";
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import BlogHeader from "@/components/blog-header.astro";
+import Footer from "@/sections/footer.astro";
+import MyStateDemo from "@/components/my-state-pattern/MyStateDemo.tsx";
+
+export const prerender = true;
+
+const pageUrl = new URL(
+  "/guides/my-state-pattern",
+  Astro.site || Astro.url.origin,
+).href;
+
+const resourceTypeSnippet = `type Resource<T> = [loading: boolean, error: unknown, data: T | null]
+
+type HomeState = {
+  session: Resource<SessionData>
+  recentArticles: Resource<Article[]>
+  serverHealth: Resource<HealthData>
+}`;
+
+const tHelperSnippet = `const t = async <T>(
+  promise: Promise<T>,
+): Promise<[ok: true, error: null, data: T] | [ok: false, error: unknown, data: null]> => {
+  try {
+    const data = await promise
+    return [true, null, data]
+  } catch (error) {
+    return [false, error, null]
+  }
+}`;
+
+const monolithicSnippet = `import { atom, onMount } from 'nanostores'
+
+const $home = atom<HomeState>({
+  session: [true, null, null],
+  recentArticles: [true, null, null],
+  serverHealth: [true, null, null],
+})
+
+onMount($home, () => {
+  fetchSession()
+  fetchRecentArticles()
+  fetchServerHealth()
+
+  async function fetchSession() {
+    const [, error, data] = await t(fetch('/api/session').then((r) => r.json()))
+    $home.set({ ...$home.get(), session: [false, error, data] })
+  }
+
+  async function fetchRecentArticles() {
+    const [, error, data] = await t(fetch('/api/articles/recent').then((r) => r.json()))
+    $home.set({ ...$home.get(), recentArticles: [false, error, data] })
+  }
+
+  async function fetchServerHealth() {
+    const [, error, data] = await t(fetch('/api/health').then((r) => r.json()))
+    $home.set({ ...$home.get(), serverHealth: [false, error, data] })
+  }
+})`;
+
+const atomizedSnippet = `import { atom, onMount, computed } from 'nanostores'
+
+function createResource<T>(fetcher: () => Promise<T>) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    t(fetcher()).then(([, error, data]) => {
+      $resource.set([false, error, data])
+    })
+  })
+
+  return $resource
+}
+
+const $session = createResource(() => fetch('/api/session').then((r) => r.json()))
+const $recentArticles = createResource(() => fetch('/api/articles/recent').then((r) => r.json()))
+const $serverHealth = createResource(() => fetch('/api/health').then((r) => r.json()))
+
+const $home = computed(
+  [$session, $recentArticles, $serverHealth],
+  (session, recentArticles, serverHealth) => ({ session, recentArticles, serverHealth }),
+)`;
+
+const cancellationSnippet = `function createResource<T>(fetcher: (signal: AbortSignal) => Promise<T>) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    const controller = new AbortController()
+
+    t(fetcher(controller.signal)).then(([, error, data]) => {
+      // el controller ya fue abortado: no pises un estado más nuevo
+      // con la respuesta de un fetch que ya no nos interesa
+      if (controller.signal.aborted) return
+      $resource.set([false, error, data])
+    })
+
+    // esto es el "onUnmount": nanostores lo llama cuando el último
+    // subscriptor se va (con ~1s de gracia por si vuelve a montar)
+    return () => controller.abort()
+  })
+
+  return $resource
+}
+
+const $session = createResource((signal) =>
+  fetch('/api/session', { signal }).then((r) => r.json()),
+)`;
+
+const sseSnippet = `function createLiveResource<T>(
+  connect: (
+    onMessage: (data: T) => void,
+    onError: (error: unknown) => void,
+  ) => () => void,
+) {
+  const $resource = atom<Resource<T>>([true, null, null])
+
+  onMount($resource, () => {
+    const close = connect(
+      (data) => $resource.set([false, null, data]),
+      (error) => $resource.set([false, error, null]),
+    )
+
+    // onUnmount: cierra la conexión, no descarta una respuesta puntual
+    return () => close()
+  })
+
+  return $resource
+}
+
+const $liveMetrics = createLiveResource<Metrics>((onMessage, onError) => {
+  const source = new EventSource('/api/metrics/stream')
+  source.onmessage = (event) => onMessage(JSON.parse(event.data))
+  source.onerror = (event) => onError(event)
+  return () => source.close()
+})`;
+
+const infiniteScrollSnippet = `// Mismo patrón que $params/$search: dos stores separados. $cursor no
+// sabe nada de fetch, $feed es el único con onMount y se subscribe a
+// $cursor al montarse — la diferencia es que la respuesta se concatena
+// a los items que ya había, en vez de reemplazarlos.
+type Page<T> = { items: T[]; hasMore: boolean }
+type FeedState<T> = { items: T[]; hasMore: boolean; loading: boolean; error: unknown }
+
+function createFeedResource<T>(
+  fetchPage: (cursor: number, signal: AbortSignal) => Promise<Page<T>>,
+) {
+  const $cursor = atom<number>(0)
+  const $feed = atom<FeedState<T>>({ items: [], hasMore: true, loading: true, error: null })
+  let controller: AbortController | null = null
+  let lastFetchedCursor: number | null = null
+
+  onMount($feed, () => {
+    // subscribe() dispara también con el valor actual de $cursor (0), así
+    // la primera página sale de inmediato al montar. Un remount rápido
+    // vuelve a disparar con el mismo cursor de la última vez: el guard
+    // evita repetir esa página y descartar los items ya acumulados.
+    const unsubscribe = $cursor.subscribe((cursor) => {
+      if (cursor === lastFetchedCursor) return
+      lastFetchedCursor = cursor
+
+      controller?.abort()
+      controller = new AbortController()
+      $feed.set({ ...$feed.get(), loading: true, error: null })
+
+      t(fetchPage(cursor, controller.signal)).then(([ok, error, page]) => {
+        if (controller.signal.aborted) return
+        const prev = $feed.get()
+        $feed.set(
+          ok
+            ? {
+                items: [...prev.items, ...page.items], // se concatena, no se reemplaza
+                hasMore: page.hasMore,
+                loading: false,
+                error: null,
+              }
+            : { ...prev, loading: false, error },
+        )
+      })
+    })
+
+    return () => {
+      unsubscribe()
+      controller?.abort()
+    }
+  })
+
+  function loadMore() {
+    const { hasMore, loading } = $feed.get()
+    if (hasMore && !loading) $cursor.set($cursor.get() + 1)
+  }
+
+  return { $cursor, $feed, loadMore }
+}
+
+const { $feed, loadMore } = createFeedResource<Article>((cursor, signal) =>
+  fetch(\`/api/articles?page=\${cursor}\`, { signal }).then((r) => r.json()),
+)`;
+
+const reactiveParamsSnippet = `type ImageParams = {
+  text: string
+  width: number
+  height: number
+}
+
+const $params = atom<ImageParams>({ text: 'my-state', width: 320, height: 160 })
+
+// Un computed normal: no hay onMount, porque no hay nada async que
+// activar. La URL se recalcula sola cada vez que $params cambia.
+const $imageUrl = computed($params, (params) => {
+  const text = encodeURIComponent(params.text.trim() || ' ')
+  return \`https://placehold.co/\${params.width}x\${params.height}?text=\${text}\`
+})
+
+// En el componente: el <img> hace el "fetch" solo, declarativamente
+function PlaceholderPreview() {
+  const imageUrl = useStore($imageUrl)
+  return <img src={imageUrl} alt="preview" />
+}
+
+function onTextChange(text: string) {
+  $params.set({ ...$params.get(), text })
+}`;
+
+const reactiveSearchSnippet = `// Dos stores separados: $params no sabe nada de fetch, $search no
+// sabe nada de inputs. $search es el único con onMount.
+function createSearchStore() {
+  const $params = atom<string>('')
+  const $search = atom<Resource<Item[]>>([true, null, null])
+  let controller: AbortController | null = null
+
+  onMount($search, () => {
+    // subscribe (a diferencia de listen) también dispara con el valor
+    // ACTUAL de $params, así el primer fetch sale de inmediato al
+    // montar, igual que cualquier otro recurso — y sigue disparando
+    // con cada cambio posterior.
+    const unsubscribe = $params.subscribe((query) => {
+      controller?.abort()
+      controller = new AbortController()
+      $search.set([true, null, null])
+
+      t(searchItems(query, controller.signal)).then(([ok, error, data]) => {
+        if (controller.signal.aborted) return
+        $search.set(ok ? [false, null, data] : [false, error, null])
+      })
+    })
+
+    return () => {
+      unsubscribe()
+      controller?.abort()
+    }
+  })
+
+  return { $params, $search }
+}
+
+// En cualquier input de la app:
+const { $params, $search } = createSearchStore()
+function onQueryChange(query: string) {
+  $params.set(query) // $search reacciona solo, si está montado
+}`;
+
+const reactSnippet = `import { useStore } from '@nanostores/react'
+
+function useHome() {
+  return useStore($home)
+}
+
+function HomePage() {
+  const { session, recentArticles, serverHealth } = useHome()
+  const [sessionLoading, sessionError, sessionData] = session
+
+  if (sessionLoading) return <Spinner />
+  if (sessionError) return <ErrorBanner error={sessionError} />
+
+  return (
+    <div>
+      <UserBadge session={sessionData} />
+      <RecentArticlesList state={recentArticles} />
+      <ServerHealthIndicator state={serverHealth} />
+    </div>
+  )
+}`;
+
+const vanillaSnippet = `// subscribe: dispara inmediatamente con el valor actual, y luego con cada cambio
+$home.subscribe((state) => {
+  render(state)
+})
+
+// listen: solo dispara con cambios futuros, no con el valor actual
+$home.listen((state) => {
+  console.log('state changed', state)
+})`;
+---
+
+<DefaultLayout
+  title="my-state pattern — demo interactiva | Jonathan Delgado"
+  description="Demo interactiva del patrón my-state: modela el estado de una página como un store de nanostores compuesto por recursos [loading, error, data]."
+  lang="es"
+>
+  <Fragment slot="head">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content="my-state pattern — demo interactiva" />
+    <meta
+      property="og:description"
+      content="Demo interactiva del patrón my-state con nanostores: tuplas [loading, error, data], el helper t() y la pereza de onMount."
+    />
+    <link rel="canonical" href={pageUrl} />
+  </Fragment>
+
+  <BlogHeader />
+
+  <main class="container mx-auto px-4 py-12 max-w-3xl">
+    <header class="mb-12">
+      <p class="text-sm font-medium text-stone-500 mb-2">Patrón · nanostores</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-stone-900 mb-4">
+        my-state: un patrón para gestionar el estado de tus páginas
+      </h1>
+      <p class="text-stone-600 leading-relaxed">
+        Modela el estado de una página como <strong
+          >un único store compuesto por recurso</strong
+        >, donde cada recurso remoto sigue siempre la misma forma: una tupla <code
+          >[loading, error, data]</code
+        >. Esta página resume la idea y trae una demo interactiva que corre el
+        patrón de verdad, con <a
+          href="https://github.com/nanostores/nanostores"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline hover:text-stone-900">nanostores</a
+        >.
+      </p>
+    </header>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Índice de soluciones
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Cada tarjeta es un caso de uso que la demo implementa de verdad, con los
+        patrones concretos que pone en juego. Es el mapa de "qué problema
+        resuelve esto" antes de bajar al detalle de cada uno.
+      </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <a
+          href="#implementaciones"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Recurso remoto único
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            <code>session</code>, <code>recentArticles</code>,{" "}
+            <code>serverHealth</code>: un fetch que se resuelve una sola vez,
+            pedido perezosamente al primer subscriptor.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>Resource&lt;T&gt;</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>t()</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>onMount</code> perezoso</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>computed</code></span
+            >
+          </div>
+        </a>
+
+        <a
+          href="#cancelacion"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Cancelar un fetch en curso
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            Abortar la petición cuando el último subscriptor se va, en vez de
+            solo ignorar una respuesta tardía.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>onUnmount</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>AbortController</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              >reintento</span
+            >
+          </div>
+        </a>
+
+        <a
+          href="#sse"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Streaming en vivo (SSE)
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            <code>$liveMetrics</code>: un recurso que empuja datos repetidas
+            veces mientras la conexión está abierta, no una sola vez.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>onMount</code> / <code>onUnmount</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              >recurso "en vivo"</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>EventSource</code></span
+            >
+          </div>
+        </a>
+
+        <a
+          href="#infinite-scroll"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Infinite scroll paginado
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            <code>$cursor</code> guarda la página; <code>$feed</code>{" "}
+            se subscribe a <code>$cursor</code> al montarse y acumula cada respuesta
+            en vez de reemplazarla.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              >dos stores separados</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>subscribe()</code> dentro de onMount</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>AbortController</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              >acumulación, no reemplazo</span
+            >
+          </div>
+        </a>
+
+        <a
+          href="#parametros-reactivos"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">
+            Parámetros reactivos (placeholder y búsqueda)
+          </h3>
+          <p class="mb-3 text-sm text-stone-600">
+            <code>$imageUrl</code> deriva una URL sin fetch ni onMount;{" "}
+            <code>$search</code> reacciona a cambios de <code>$params</code>{
+              " "
+            }
+            con un fetch cancelable cada vez.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>atom</code> de parámetros</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>computed</code> sin onMount</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>subscribe()</code> dentro de onMount</span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>AbortController</code></span
+            >
+          </div>
+        </a>
+
+        <a
+          href="#consumo"
+          class="block rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+        >
+          <h3 class="mb-1 font-semibold text-stone-900">Consumir el estado</h3>
+          <p class="mb-3 text-sm text-stone-600">
+            El mismo store se lee igual desde React que desde JS vanilla, sin
+            cambiar la lógica de negocio.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>useStore</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>subscribe</code></span
+            >
+            <span
+              class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600"
+              ><code>listen</code></span
+            >
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Entidades del patrón
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Un mapa rápido de las piezas que aparecen en esta página, de la más
+        pequeña (una tupla) a la más compuesta (un store por página), con las
+        dos variantes que agregan un contrato distinto: cancelación, streaming y
+        paginación.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-stone-200">
+        <table class="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-stone-200 bg-stone-50 text-left">
+              <th class="px-4 py-2 font-semibold text-stone-800">Entidad</th>
+              <th class="px-4 py-2 font-semibold text-stone-800">Forma</th>
+              <th class="px-4 py-2 font-semibold text-stone-800">Rol</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-100 text-stone-600">
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#resource" class="font-medium text-stone-900 underline"
+                  ><code>Resource&lt;T&gt;</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>[loading, error, data]</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                La unidad atómica de estado: cualquier recurso remoto de una
+                sola resolución sigue siempre esta forma.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#t-helper" class="font-medium text-stone-900 underline"
+                  ><code>t(promise)</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>Promise&lt;T&gt; → [ok, error, data]</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Adapta cualquier promesa a la forma que espera un{" "}
+                <code>Resource&lt;T&gt;</code>, sin <code>try/catch</code>{" "}
+                repetido y con <code>data</code> tipada según <code>ok</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>$resource</code> (atom)</a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom&lt;Resource&lt;T&gt;&gt;([true, null, null])</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El store nanostores de un recurso individual: nace en{" "}
+                <code>loading</code> y se actualiza con <code>set</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>onMount</code> / <code>onUnmount</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>onMount($store, () =&gt; cleanup)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El ciclo de vida completo: <code>onMount</code> corre al primer subscriptor
+                y dispara el fetch/stream/conexión; lo que retorna (el <strong
+                  >onUnmount</strong
+                >) corre al último subscriptor, con ~1s de gracia.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#cancelacion"
+                  class="font-medium text-stone-900 underline"
+                  ><code>AbortController</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>signal</code> pasado al fetcher
+              </td>
+              <td class="px-4 py-3 align-top">
+                Cancela lo que esté en curso desde el <code>onUnmount</code>: un
+                fetch, un reintento, o la página en curso de un feed.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#implementaciones"
+                  class="font-medium text-stone-900 underline"
+                  ><code>computed</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>computed([$a, $b, ...], combiner)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Compone varios <code>$resource</code> en un store derivado, propagando
+                la suscripción de forma transitiva a cada uno.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#consumo" class="font-medium text-stone-900 underline"
+                  ><code>$home</code> / <code>HomeState</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>{"{"} session, recentArticles, ... {"}"}</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                El estado completo de una página: agrupa sus recursos bajo un
+                solo store, consumible con <code>useStore</code>{" "}
+                (React) o <code>subscribe</code>/<code>listen</code>{" "}
+                (vanilla).
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a href="#sse" class="font-medium text-stone-900 underline"
+                  >Recurso en vivo (SSE)</a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>onMessage / onError</code> repetidos
+              </td>
+              <td class="px-4 py-3 align-top">
+                Variante que llama <code>$resource.set(...)</code> muchas veces mientras
+                la conexión está abierta, en vez de resolver una promesa una sola
+                vez; el cleanup cierra la conexión (<code>close()</code>) en vez
+                de abortar un fetch.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#infinite-scroll"
+                  class="font-medium text-stone-900 underline"
+                  ><code>$cursor</code> / <code>$feed</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom(number) + onMount(subscribe)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Mismo patrón que <code>$params</code>/<code>$search</code>,
+                aplicado a paginación: <code>$cursor</code> guarda la página, <code
+                  >$feed</code
+                > se <code>subscribe()</code> a ella al montarse. La diferencia es
+                que la respuesta se acumula (<code
+                  >[...prev.items, ...page.items]</code
+                >) en vez de reemplazar el valor.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#parametros-reactivos"
+                  class="font-medium text-stone-900 underline"
+                  ><code>ImageParams</code> / <code>$imageUrl</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom(params) → computed(url)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Estado local que no representa ningún recurso remoto:{" "}
+                <code>$params</code> guarda lo que el usuario escribe, y{" "}
+                <code>computed</code> deriva un valor sincrónicamente (una URL).
+                No necesita <code>onMount</code> porque no hay nada que activar perezosamente.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <a
+                  href="#parametros-reactivos"
+                  class="font-medium text-stone-900 underline"
+                  ><code>$params</code> / <code>$search</code></a
+                >
+              </td>
+              <td class="px-4 py-3 align-top">
+                <code>atom(string) + onMount(subscribe)</code>
+              </td>
+              <td class="px-4 py-3 align-top">
+                Dos stores separados en vez de uno: <code>$params</code> no sabe
+                nada de fetch, <code>$search</code> es el único con{" "}
+                <code>onMount</code> y se <code>subscribe()</code> a{" "}
+                <code>$params</code> al montarse, disparando un fetch cancelable
+                en el primer valor y en cada cambio posterior.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="resource" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        La tupla de estado
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Cada recurso remoto se representa con el mismo tipo, y el estado de la
+        página agrupa una tupla por cada sección de información que necesita:
+      </p>
+      <Code code={resourceTypeSnippet} lang="ts" theme="github-dark" />
+    </section>
+
+    <section id="t-helper" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        El helper <code>t</code>: adiós al try/catch
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        <code>t</code> envuelve cualquier promesa en una tupla{" "}
+        <code>[ok, error, data]</code> tipada como unión discriminada, así TypeScript
+        acota el tipo de <code>data</code> según el valor de{" "}
+        <code>ok</code>, sin <code>as</code> ni chequeos extra.
+      </p>
+      <Code code={tHelperSnippet} lang="ts" theme="github-dark" />
+    </section>
+
+    <section id="demo" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Pruébalo: el patrón corriendo en vivo
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        La demo de abajo usa stores reales de nanostores, y{" "}
+        <strong>cada tarjeta es un ejemplo independiente</strong>: tiene su
+        propio botón montar/desmontar, su propio registro de actividad, y su
+        propio campo con el último estado — montar una no dispara ni afecta a
+        las demás. <code>session</code>, <code>recentArticles</code>{" "}
+        y <code>serverHealth</code> son tres recursos simulados: móntalos para ver
+        <code>onMount</code> disparar el fetch, fuerza un error, o desmóntalos para
+        ver <code>onUnmount</code> abortando el fetch en curso con <code
+          >AbortController</code
+        >. <code>$liveMetrics</code>{" "}
+        simula un <code>EventSource</code> (SSE): en vez de resolver una vez, empuja
+        mensajes mientras está montado, y <code>onUnmount</code>{" "}
+        cierra la conexión en vez de abortar un fetch puntual.{" "}
+        <code>$feed</code> es una lista con scroll infinito real: desplázate dentro
+        de la lista para pedir la siguiente página automáticamente. <code
+          >$imageUrl</code
+        > no tiene mount: escribe un texto y mira la URL de un placeholder actualizarse
+        sola. Y <code>$search</code> sí lo tiene: móntalo para ver el primer fetch
+        salir con el valor actual de <code>$params</code>, y escribe para ver
+        cada búsqueda cancelar la anterior.
+      </p>
+      <MyStateDemo client:load />
+    </section>
+
+    <section id="implementaciones" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Dos formas de implementarlo
+      </h2>
+
+      <div class="mb-6">
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Monolítico: un atom, un <code>onMount</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Ideal cuando la página es simple y no necesitas reutilizar la lógica
+          de fetch en otra parte de la app.
+        </p>
+        <Code code={monolithicSnippet} lang="ts" theme="github-dark" />
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Atomizado: un recurso, un atom, compuestos con <code>computed</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Cuando varias páginas comparten recursos (como <code>session</code>),
+          cada uno vive en su propio store reutilizable y se compone con{" "}
+          <code>computed</code>, que propaga la suscripción de forma transitiva:
+          la demo de arriba usa esta variante.
+        </p>
+        <Code code={atomizedSnippet} lang="ts" theme="github-dark" />
+      </div>
+    </section>
+
+    <section id="cancelacion" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Cancelar el fetch en curso
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        <code>onMount</code> puede devolver una función: nanostores la registra como
+        <strong>onUnmount</strong> y la ejecuta cuando el último subscriptor se va
+        (con un pequeño margen para no cancelar por un remount inmediato). Ese es
+        el lugar correcto para cancelar cualquier petición en curso: crea el <code
+          >AbortController</code
+        >{" "}
+        dentro del propio <code>onMount</code>, pásale su <code>signal</code>{
+          " "
+        }
+        al fetcher, y llama <code>controller.abort()</code> en el cleanup.
+      </p>
+      <Code code={cancellationSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Al abortar, <code>fetch</code> rechaza la promesa con un{" "}
+        <code>AbortError</code>, que <code>t</code> captura igual que cualquier otro
+        error. Por eso conviene revisar{" "}
+        <code>signal.aborted</code> antes de aplicar el resultado: evita que la respuesta
+        de un fetch ya cancelado sobrescriba un estado más reciente (por ejemplo,
+        el de un reintento posterior). La demo de más arriba implementa exactamente
+        este patrón — desmóntalo mientras un recurso está cargando y revisa su propio
+        registro de actividad.
+      </p>
+    </section>
+
+    <section id="sse" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Streaming con SSE: un recurso que no se resuelve una sola vez
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        El contrato <code>onMount</code>/<code>onUnmount</code> no es exclusivo de
+        <code>fetch</code>. Sirve para cualquier fuente que necesite abrirse al
+        montar y cerrarse al desmontar: un{" "}
+        <code>EventSource</code> (Server-Sent Events) es el ejemplo más directo.
+        La diferencia con un recurso normal es que{" "}
+        <code>$resource.set(...)</code> se llama muchas veces — una por mensaje —
+        en vez de una sola vez al resolver una promesa.
+      </p>
+      <Code code={sseSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Aquí <code>onUnmount</code> no aborta una petición puntual, cierra una conexión
+        de larga duración con <code>source.close()</code>. Sin ese cleanup, cada
+        vez que la página se desmonta y se vuelve a montar (por ejemplo, al
+        navegar) quedaría una conexión SSE abierta escuchando eventos que nadie
+        va a leer — un leak silencioso y fácil de pasar por alto. La demo de
+        arriba simula esto con{" "}
+        <code>$liveMetrics</code>: móntala para ver los mensajes llegar cada
+        ~700ms, fuerza un corte de conexión, o desmóntala y revisa su propio
+        registro de actividad para confirmar el <code>source.close()</code>.
+      </p>
+    </section>
+
+    <section id="infinite-scroll" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Infinite scroll: el mismo patrón, con un store que acumula
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        Funciona igual que <code>$params</code>/<code>$search</code>: dos stores
+        separados. <code>$cursor</code> no sabe nada de fetch — solo guarda qué página
+        toca pedir. <code>$feed</code> es el único con{" "}
+        <code>onMount</code>, y al montarse se <code>subscribe()</code> a{" "}
+        <code>$cursor</code>. La única diferencia real es qué hace con la
+        respuesta: en vez de <em>reemplazar</em> el valor, lo{" "}
+        <strong>acumula</strong> (<code>[...prev.items, ...page.items]</code>).
+      </p>
+      <Code code={infiniteScrollSnippet} lang="ts" theme="github-dark" />
+      <p class="text-stone-600 leading-relaxed mt-3">
+        Igual que en <code>$search</code>, <code>subscribe()</code> (no{" "}
+        <code>listen()</code>) hace que la primera página salga de inmediato al
+        montar, con el <code>$cursor</code> inicial (0). Pero acá hay un detalle
+        nuevo: un remount rápido vuelve a disparar el callback con el <em
+          >mismo</em
+        >
+        <code>$cursor</code> de la última vez (porque{" "}
+        <code>$cursor</code> no se resetea entre mounts), y sin cuidado eso repetiría
+        la última página y duplicaría items. El guard{" "}
+        <code>if (cursor === lastFetchedCursor) return</code> es lo que evita eso
+        — el equivalente de "si ya tengo esta página, no la vuelvas a pedir". <code
+          >loadMore()</code
+        > simplemente hace{" "}
+        <code>$cursor.set($cursor.get() + 1)</code>: cambiar el cursor es lo
+        único que hace falta para que <code>$feed</code> reaccione y pida la siguiente
+        tanda. La demo simula un feed de 20 artículos en 4 páginas: móntala y desplázate
+        dentro de <code>$feed</code> para ver la carga automática, o usa "Cargar
+        más" directamente.
+      </p>
+    </section>
+
+    <section id="parametros-reactivos" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Parámetros reactivos: derivar sin fetch, o reaccionar con uno
+      </h2>
+      <p class="text-stone-600 leading-relaxed mb-4">
+        No todo el estado de una página viene de una API. A veces el "recurso"
+        es puramente local: un texto que el usuario escribe. Lo que hagas con
+        ese texto define el patrón — y hay dos casos bien distintos.
+      </p>
+
+      <div class="mb-6">
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Derivar sin fetch: <code>computed</code> sin <code>onMount</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Cuando solo necesitas <em>transformar</em> el parámetro — por ejemplo,
+          armar la URL de una imagen de un servicio de placeholder como{" "}
+          <a
+            href="https://placehold.co"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-stone-900">placehold.co</a
+          > — no hace falta <code>Resource&lt;T&gt;</code> ni{" "}
+          <code>onMount</code>: alcanza con un <code>atom</code> de parámetros y
+          un <code>computed</code> que los transforma.
+        </p>
+        <Code code={reactiveParamsSnippet} lang="tsx" theme="github-dark" />
+        <p class="text-stone-600 leading-relaxed mt-3">
+          Este <code>computed</code> no necesita <code>onMount</code> porque no hay
+          nada que activar perezosamente — no se está pidiendo nada a un servidor,
+          solo se está calculando un string a partir de otro. El propio <code
+            >&lt;img src=&#123;imageUrl&#125;&gt;</code
+          > es quien dispara la petición de red, de forma declarativa, cuando el
+          navegador decide pintar esa imagen. La demo de arriba (<code
+            >$imageUrl</code
+          >) no necesita que montes nada: escribe en el campo de texto y mira la
+          URL (y la imagen) actualizarse solas.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-stone-800 mb-2">
+          Reaccionar con un fetch: dos stores, uno con <code>onMount</code>
+        </h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Cuando el parámetro sí necesita pedir algo remoto — una búsqueda que
+          se dispara mientras escribes — el patrón es más simple de lo que
+          parece: <code>$params</code> guarda el texto y no sabe nada de fetch; <code
+            >$search</code
+          > es el único store con{" "}
+          <code>onMount</code>, y al montarse se subscribe a{" "}
+          <code>$params</code> con <code>subscribe()</code> (no{" "}
+          <code>listen()</code>) para que el primer fetch salga de inmediato con
+          el valor actual, igual que cualquier otro recurso de la página.
+        </p>
+        <Code code={reactiveSearchSnippet} lang="tsx" theme="github-dark" />
+        <p class="text-stone-600 leading-relaxed mt-3">
+          Cada cambio en <code>$params</code> vuelve a ejecutar el callback del <code
+            >subscribe</code
+          >, que aborta el fetch anterior antes de lanzar el nuevo — el mismo <code
+            >AbortController</code
+          > de la sección de cancelación, aplicado a una petición que se repite en
+          vez de una que solo pasa una vez. La demo de arriba (<code
+            >$search</code
+          >) es independiente como las demás: móntala para ver el primer fetch
+          salir solo, escribe para ver cada tecla (con debounce) cancelar y
+          relanzar la búsqueda, y desmóntala para ver el{" "}
+          <code>onUnmount</code> hacer <code>unsubscribe</code> de{" "}
+          <code>$params</code> además de abortar.
+        </p>
+      </div>
+    </section>
+
+    <section id="consumo" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">Consumo</h2>
+
+      <div class="mb-6">
+        <h3 class="text-base font-semibold text-stone-800 mb-2">React</h3>
+        <Code code={reactSnippet} lang="tsx" theme="github-dark" />
+      </div>
+
+      <div>
+        <h3 class="text-base font-semibold text-stone-800 mb-2">JS vanilla</h3>
+        <p class="text-stone-600 leading-relaxed mb-3">
+          Usa <code>subscribe</code> si necesitas pintar el estado inicial (aunque
+          sea "cargando"); usa <code>listen</code> si solo te interesa reaccionar
+          a cambios posteriores.
+        </p>
+        <Code code={vanillaSnippet} lang="ts" theme="github-dark" />
+      </div>
+    </section>
+
+    <section id="buenas-practicas" class="mb-12">
+      <h2 class="text-xl font-semibold text-stone-900 mb-3">
+        Buenas prácticas
+      </h2>
+      <ul
+        class="list-disc list-inside space-y-2 text-stone-600 leading-relaxed"
+      >
+        <li>
+          Nombra los stores por página o feature (<code>$home</code>,{" "}
+          <code>$profile</code>, <code>$checkout</code>), no genéricamente.
+        </li>
+        <li>
+          Nunca mutes el objeto de estado: siempre <code>set</code> con uno nuevo.
+        </li>
+        <li>
+          Tipa la tupla de estado y desestructura con nombres para legibilidad.
+        </li>
+        <li>
+          Cancela el fetch en curso desde el <code>onUnmount</code> (lo que retorna
+          <code>onMount</code>) con un <code>AbortController</code>, no solo con
+          una bandera que ignore la respuesta.
+        </li>
+        <li>
+          Para listas paginadas usa un store que <em>acumule</em> items y guarde
+          el cursor de la última página, no un{" "}
+          <code>Resource&lt;T[]&gt;</code> que reemplaza el arreglo en cada fetch.
+        </li>
+        <li>
+          No fuerces <code>Resource&lt;T&gt;</code> ni <code>onMount</code>{" "}
+          en estado puramente local (parámetros de UI, filtros, texto de un input):
+          un <code>atom</code> + <code>computed</code> simple alcanza si no hay nada
+          async que activar perezosamente.
+        </li>
+        <li>
+          Comparte recursos entre páginas con la variante atomizada cuando
+          detectes duplicación.
+        </li>
+        <li>
+          Usa <code>t</code> para resolver promesas en cualquier punto de la app,
+          no solo dentro de <code>onMount</code>.
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <Footer />
+</DefaultLayout>
