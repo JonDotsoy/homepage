@@ -7,8 +7,10 @@ import MyStateDemo from "@/components/my-state-pattern/MyStateDemo.tsx";
 
 export const prerender = true;
 
-const pageUrl = new URL("/my-state-pattern", Astro.site || Astro.url.origin)
-  .href;
+const pageUrl = new URL(
+  "/guides/my-state-pattern",
+  Astro.site || Astro.url.origin,
+).href;
 
 const resourceTypeSnippet = `type Resource<T> = [loading: boolean, error: unknown, data: T | null]
 
