@@ -268,11 +268,11 @@ const source = pullSource<{ port: number }>({
     description:
       "Publica un valor plano que ya tienes a mano (value) como snapshot de inmediato, y luego se cierra. Sin I/O, sin opciones — solo envuelve value en un Source para que pueda ir en un arreglo sources junto al resto.",
     note: "Útil como árbol de respaldo estático (ponlo al final, para que ganen los sources reales), como default hardcodeado para un solo ambiente, o como source de relleno en un test.",
-    example: `import { configs } from "@jondotsoy/configs";
+    example: `import { create } from "@jondotsoy/configs";
 import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
 import { literalSource } from "@jondotsoy/configs/sources/literal";
 
-const cfg = await configs.create(
+const cfg = await create(
   {
     port: { type: "number", required: true },
     host: { type: "string", required: true },
@@ -545,11 +545,11 @@ const source = pullSource<{ port: number }>({
     description:
       "Publishes a plain, already-in-hand value as a snapshot immediately, then closes. No I/O, no options — just wraps value in a Source so it can sit in a sources array alongside the rest.",
     note: "Handy as a static fallback tree (put it last so real sources win), a hardcoded default for a single environment, or a stand-in source in a test.",
-    example: `import { configs } from "@jondotsoy/configs";
+    example: `import { create } from "@jondotsoy/configs";
 import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
 import { literalSource } from "@jondotsoy/configs/sources/literal";
 
-const cfg = await configs.create(
+const cfg = await create(
   {
     port: { type: "number", required: true },
     host: { type: "string", required: true },
@@ -572,20 +572,20 @@ const configsJsonExample = `{
   }
 }`;
 
-const configsTsExample = `import { configs } from "@jondotsoy/configs";
+const configsTsExample = `import { create } from "@jondotsoy/configs";
 import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
 import { fileSource } from "@jondotsoy/configs/sources/file";
 
-export default await configs.create(
+export default await create(
   {
-    server: configs.create(
+    server: create(
       {
         port: { type: "number", summary: "HTTP port", default: 3000 },
         host: { type: "string", summary: "bind host", default: "localhost" },
       },
       { sources: [ envSource({ mapKey: mapKey.camelCase() }) ] }
     ),
-    features: configs.create({
+    features: create({
       promoService: {
         type: "boolean",
         summary: "enable the promo service",
@@ -599,14 +599,14 @@ export default await configs.create(
 const configsEnvExample = `PORT=3000
 HOST=localhost`;
 
-const appTsxExample = `import { configs } from "@jondotsoy/configs";
+const appTsxExample = `import { create } from "@jondotsoy/configs";
 import { fetchSource } from "@jondotsoy/configs/sources/fetch";
 import { useConfig } from "@jondotsoy/configs/react";
 import { Temporal } from "temporal-polyfill";
 
-const cfg = await configs.create(
+const cfg = await create(
   {
-    features: configs.create({
+    features: create({
       promoService: { type: "boolean", summary: "enable the promo service", default: false },
     }),
   },
@@ -665,12 +665,12 @@ spec:
           configMap:
             name: app-config`;
 
-const k8sServerExampleEs = `import { configs } from "@jondotsoy/configs";
+const k8sServerExampleEs = `import { create } from "@jondotsoy/configs";
 import { fileSource } from "@jondotsoy/configs/sources/file";
 
-const cfg = await configs.create(
+const cfg = await create(
   {
-    features: configs.create({
+    features: create({
       promoService: { type: "boolean", summary: "enable the promo service", default: false },
     }),
   },
@@ -682,12 +682,12 @@ cfg.features.promoService.subscribe((enabled) => {
   console.log(\`promo service \${enabled ? "enabled" : "disabled"}\`);
 });`;
 
-const k8sServerExampleEn = `import { configs } from "@jondotsoy/configs";
+const k8sServerExampleEn = `import { create } from "@jondotsoy/configs";
 import { fileSource } from "@jondotsoy/configs/sources/file";
 
-const cfg = await configs.create(
+const cfg = await create(
   {
-    features: configs.create({
+    features: create({
       promoService: { type: "boolean", summary: "enable the promo service", default: false },
     }),
   },
@@ -702,17 +702,17 @@ cfg.features.promoService.subscribe((enabled) => {
 const k8sServerExample =
   lang === "en" ? k8sServerExampleEn : k8sServerExampleEs;
 
-const closingExampleEs = `import { configs } from "@jondotsoy/configs";
+const closingExampleEs = `import { create } from "@jondotsoy/configs";
 import { sseSource } from "@jondotsoy/configs/sources/sse";
 
 const source = sseSource({ url: "https://config-service.internal/app/events" });
-const serverConfigs = await configs.create({ port: { type: "number" } }, { sources: [source] });
+const serverConfigs = await create({ port: { type: "number" } }, { sources: [source] });
 
 await serverConfigs.close();
 
 // o, con Symbol.asyncDispose:
 async function run() {
-  await using serverConfigs = await configs.create(
+  await using serverConfigs = await create(
     { port: { type: "number" } },
     { sources: [sseSource({ url: "https://config-service.internal/app/events" })] },
   );
@@ -721,17 +721,17 @@ async function run() {
   // se cierra automáticamente aquí, sin necesidad de serverConfigs.close()
 }`;
 
-const closingExampleEn = `import { configs } from "@jondotsoy/configs";
+const closingExampleEn = `import { create } from "@jondotsoy/configs";
 import { sseSource } from "@jondotsoy/configs/sources/sse";
 
 const source = sseSource({ url: "https://config-service.internal/app/events" });
-const serverConfigs = await configs.create({ port: { type: "number" } }, { sources: [source] });
+const serverConfigs = await create({ port: { type: "number" } }, { sources: [source] });
 
 await serverConfigs.close();
 
 // or, with Symbol.asyncDispose:
 async function run() {
-  await using serverConfigs = await configs.create(
+  await using serverConfigs = await create(
     { port: { type: "number" } },
     { sources: [sseSource({ url: "https://config-service.internal/app/events" })] },
   );
@@ -1647,7 +1647,7 @@ const homeHref = lang === "en" ? "/en" : "/";
           lang === "en" ? (
             <>
               <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-                configs.create(...)
+                create(...)
               </code>{" "}
               exposes{" "}
               <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
@@ -1670,7 +1670,7 @@ const homeHref = lang === "en" ? "/en" : "/";
           ) : (
             <>
               <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-                configs.create(...)
+                create(...)
               </code>{" "}
               expone{" "}
               <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
