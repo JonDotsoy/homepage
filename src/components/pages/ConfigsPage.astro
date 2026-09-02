@@ -2,7 +2,7 @@
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import Footer from "@/sections/footer.astro";
 import { Code } from "astro:components";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
 
 interface Props {
   lang: "es" | "en";
@@ -919,7 +919,7 @@ const homeHref = lang === "en" ? "/en" : "/";
 
 <DefaultLayout title={pageTitle} description={pageDescription} lang={lang}>
   <main class="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16">
-    <header>
+    <header class="flex items-center gap-4">
       <a
         href={homeHref}
         class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -927,7 +927,40 @@ const homeHref = lang === "en" ? "/en" : "/";
         <ArrowLeft className="size-4" />
         {lang === "en" ? "Home" : "Inicio"}
       </a>
+      <button
+        id="copy-page-button"
+        type="button"
+        data-copy-label={lang === "en" ? "Copy page" : "Copiar página"}
+        data-copied-label={lang === "en" ? "Copied!" : "¡Copiado!"}
+        class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Copy className="size-4" />
+        <span>{lang === "en" ? "Copy page" : "Copiar página"}</span>
+      </button>
     </header>
+
+    <script>
+      const button = document.getElementById(
+        "copy-page-button",
+      ) as HTMLButtonElement | null;
+      const label = button?.querySelector("span");
+
+      button?.addEventListener("click", async () => {
+        if (!label) return;
+        try {
+          const response = await fetch(`${location.pathname}.md`);
+          const markdown = await response.text();
+          await navigator.clipboard.writeText(markdown);
+          const original = label.textContent;
+          label.textContent = button.dataset.copiedLabel ?? original;
+          setTimeout(() => {
+            label.textContent = original;
+          }, 1500);
+        } catch (error) {
+          console.error("Failed to copy page as markdown", error);
+        }
+      });
+    </script>
 
     <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center gap-2">
