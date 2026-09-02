@@ -2,7 +2,13 @@
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import Footer from "@/sections/footer.astro";
 import { Code } from "astro:components";
-import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  FileText,
+} from "lucide-react";
 import pageMarkdownEs from "./configs.es.md?raw";
 import pageMarkdownEn from "./configs.en.md?raw";
 
@@ -918,6 +924,15 @@ const pageDescription =
     : "Librería de configuración reactiva y tipada respaldada por fuentes conectables: env, fetch, sse, file, pull y literal.";
 
 const homeHref = lang === "en" ? "/en" : "/";
+
+const markdownUrl = lang === "en" ? "/en/configs.md" : "/configs.md";
+const absoluteMarkdownUrl = new URL(markdownUrl, Astro.site || Astro.url.origin)
+  .href;
+const claudePrompt =
+  lang === "en"
+    ? `Read ${absoluteMarkdownUrl} so I can ask you questions about this page.`
+    : `Lee ${absoluteMarkdownUrl} para que pueda hacerte preguntas sobre esta página.`;
+const openInClaudeUrl = `https://claude.ai/new?q=${encodeURIComponent(claudePrompt)}`;
 ---
 
 <DefaultLayout title={pageTitle} description={pageDescription} lang={lang}>
@@ -930,16 +945,50 @@ const homeHref = lang === "en" ? "/en" : "/";
         <ArrowLeft className="size-4" />
         {lang === "en" ? "Home" : "Inicio"}
       </a>
-      <button
-        id="copy-page-button"
-        type="button"
-        data-copy-label={lang === "en" ? "Copy page" : "Copiar página"}
-        data-copied-label={lang === "en" ? "Copied!" : "¡Copiado!"}
-        class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <Copy className="size-4" />
-        <span>{lang === "en" ? "Copy page" : "Copiar página"}</span>
-      </button>
+      <div class="inline-flex items-center">
+        <button
+          id="copy-page-button"
+          type="button"
+          data-copy-label={lang === "en" ? "Copy page" : "Copiar página"}
+          data-copied-label={lang === "en" ? "Copied!" : "¡Copiado!"}
+          class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Copy className="size-4" />
+          <span>{lang === "en" ? "Copy page" : "Copiar página"}</span>
+        </button>
+        <details class="relative">
+          <summary
+            class="inline-flex list-none items-center border-l border-border pl-2 text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden"
+            aria-label={lang === "en"
+              ? "More page options"
+              : "Más opciones de la página"}
+          >
+            <ChevronDown className="size-4" />
+          </summary>
+          <div
+            class="absolute right-0 z-10 mt-2 flex w-56 flex-col overflow-hidden rounded-md border border-border bg-card py-1 text-sm shadow-md"
+          >
+            <a
+              href={markdownUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <FileText className="size-4" />
+              {lang === "en" ? "View as Markdown" : "Ver como Markdown"}
+            </a>
+            <a
+              href={openInClaudeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ExternalLink className="size-4" />
+              {lang === "en" ? "Open in Claude" : "Abrir en Claude"}
+            </a>
+          </div>
+        </details>
+      </div>
     </header>
 
     <div id="page-markdown-source" class="hidden" set:text={pageMarkdown} />
@@ -962,6 +1011,25 @@ const homeHref = lang === "en" ? "/en" : "/";
           }, 1500);
         } catch (error) {
           console.error("Failed to copy page as markdown", error);
+        }
+      });
+
+      const pageMenu = document.querySelector("header details");
+      document.addEventListener("click", (event) => {
+        if (
+          pageMenu instanceof HTMLDetailsElement &&
+          pageMenu.open &&
+          !pageMenu.contains(event.target as Node)
+        ) {
+          pageMenu.open = false;
+        }
+      });
+      pageMenu?.addEventListener("click", (event) => {
+        if (
+          pageMenu instanceof HTMLDetailsElement &&
+          (event.target as HTMLElement).closest("a")
+        ) {
+          pageMenu.open = false;
         }
       });
     </script>
