@@ -115,6 +115,16 @@ const source2 = envSource({ mapKey: mapKey.lookup({ PORT: ["server", "port"] }) 
         detail:
           "apagado por defecto (false): fetchSource descarga url una sola vez y se cierra. Pasa un número de milisegundos para activar el polling — sigue re-descargando en ese intervalo (cada ronda reintentada hasta attempts veces) hasta que el Source se cierre.",
       },
+      {
+        name: "treePath",
+        detail:
+          'selecciona un subárbol del body descargado para usar como árbol de config, p. ej. ["containers", "settings"]. Por defecto [] usa el body completo, sin cambios.',
+      },
+      {
+        name: "reduce",
+        detail:
+          "combina cada descarga exitosa con el valor publicado anteriormente en vez de reemplazarlo por completo. Útil con pollingInterval cuando una ronda posterior es una actualización parcial. Recibe el body recién descargado (y ya filtrado por treePath) como incoming y el último valor publicado como previous (null antes de la primera ronda). Por defecto publica incoming tal cual — un reemplazo completo.",
+      },
     ],
     note: "Si la descarga nunca tiene éxito (error de red, o un status rechazado por acceptStatus tras agotar attempts), o bodyParser lanza, fetchSource registra un console.error y deja el store vacío en vez de lanzar. Una ronda fallida después de la primera se registra y se salta, sin cerrar el source ni detener el polling.",
     example: `import { fetchSource } from "@jondotsoy/configs/sources/fetch";
@@ -143,8 +153,43 @@ const source = fetchSource<{ port: number }>({
         name: "headers",
         detail: "headers a enviar al abrir la conexión SSE.",
       },
+      {
+        name: "body",
+        detail:
+          "cuerpo del request, se pasa tal cual a fetch (un string JSON, FormData, Blob, etc.).",
+      },
+      {
+        name: "signal",
+        detail:
+          "aborta la conexión (y detiene su reintento) cuando la señal se dispara. Independiente del close() propio del Source, que también aborta la conexión.",
+      },
+      {
+        name: "mode / cache / redirect",
+        detail:
+          'se pasan tal cual a fetch. Ver RequestInit["mode"], RequestInit["cache"] y RequestInit["redirect"].',
+      },
+      {
+        name: "credentials",
+        detail:
+          "arma el header Authorization: { basic: { username, password } } envía Basic <base64>; { bearer: { token } } envía Bearer <token>.",
+      },
+      {
+        name: "attempts",
+        detail:
+          "intenta establecer la conexión antes de darse por vencido (por defecto 1, sin reintento).",
+      },
+      {
+        name: "acceptStatus",
+        detail:
+          "decide si un status code cuenta como aceptado. Por defecto, 2xx: (statusCode) => statusCode >= 200 && statusCode < 300.",
+      },
+      {
+        name: "reduce",
+        detail:
+          "combina cada mensaje parseado con el árbol acumulado hasta ahora, sobreescribiendo el patch-merge superficial por defecto (campos nuevos se agregan, existentes se sobreescriben, el resto se conserva). Recibe el mensaje parseado como incoming y el árbol publicado previamente como previous (null antes del primer mensaje). Un reduce propio reemplaza ese comportamiento por completo, así que debe encargarse de su propio merge si aún lo quieres.",
+      },
     ],
-    note: "Un mensaje que no sea JSON válido, o que no parsee a un objeto plano, se registra vía console.error y se salta — nunca resetea lo ya recibido. Abrir el source espera el primer mensaje (así el Store que recibes ya trae datos, no null), y luego mantiene la conexión viva en segundo plano, aplicando más mensajes como patches hasta que el recurso cierre el stream.",
+    note: "Un mensaje que no sea JSON válido, o que no parsee a un objeto plano, se registra vía console.error y se salta — nunca resetea lo ya recibido. Abrir el source espera el primer mensaje (así el Store que recibes ya trae datos, no null), y luego mantiene la conexión viva en segundo plano, aplicando más mensajes como patches hasta que el recurso cierre el stream. Además de url/method/headers, acepta las mismas opciones de fetchSource para dar forma al request; attempts solo reintenta la conexión inicial — una vez abierto el stream, una conexión caída cierra el source en vez de reconectar.",
     example: `import { sseSource } from "@jondotsoy/configs/sources/sse";
 
 const source = sseSource<{ port?: number; host?: string }>({
@@ -179,6 +224,11 @@ const source = sseSource<{ port?: number; host?: string }>({
         name: "parser",
         detail:
           "sobreescribe el parseo por defecto: recibe los bytes crudos del archivo y retorna el árbol de config parseado. Útil para formatos que este módulo no parsea, como YAML con una librería propia.",
+      },
+      {
+        name: "reduce",
+        detail:
+          "combina cada lectura con el valor publicado anteriormente en vez de reemplazarlo por completo. Útil con watch (el default) cuando una lectura posterior debería mezclarse con lo que ya hay en vez de reemplazarlo del todo. Recibe el árbol recién leído (y ya filtrado por treePath) como incoming y el último valor publicado como previous (null antes de la primera lectura). Por defecto publica incoming tal cual — un reemplazo completo.",
       },
     ],
     note: "Un archivo ausente, una extensión no reconocida, o un parseo fallido (incluso en un cambio observado posterior) se registra vía console.error y deja el store vacío en vez de lanzar — un error de parseo en un cambio posterior conserva el último valor bueno. Si treePath apunta a un segmento ausente o que no es un objeto, también se registra un error, pero igual publica un snapshot vacío ({}) en vez de null, ya que el archivo sí se leyó y parseó bien.",
@@ -342,6 +392,16 @@ const source2 = envSource({ mapKey: mapKey.lookup({ PORT: ["server", "port"] }) 
         detail:
           "off by default (false): fetchSource fetches url once and closes. Pass a number of milliseconds to turn polling on — it keeps re-fetching on that interval (each round still retried up to attempts times) until the Source is closed.",
       },
+      {
+        name: "treePath",
+        detail:
+          'selects a subtree of the fetched body to use as the config tree instead of the whole thing, e.g. ["containers", "settings"]. Defaults to [], the whole body unchanged.',
+      },
+      {
+        name: "reduce",
+        detail:
+          "combines each successful fetch with the previously published value instead of replacing it outright. Useful with pollingInterval when a later round's response is a partial update. Receives the freshly fetched (and treePath-selected) body as incoming and the last published value as previous (null before the first round). Defaults to publishing incoming as-is — a full replace.",
+      },
     ],
     note: "If the download never succeeds (a network error, or a status rejected by acceptStatus after exhausting attempts), or bodyParser throws, fetchSource logs a console.error and leaves the store empty instead of throwing. A failed round after the first one is logged and skipped, without closing the source or stopping the polling.",
     example: `import { fetchSource } from "@jondotsoy/configs/sources/fetch";
@@ -370,8 +430,43 @@ const source = fetchSource<{ port: number }>({
         name: "headers",
         detail: "headers to send when opening the SSE connection.",
       },
+      {
+        name: "body",
+        detail:
+          "request body, passed through to fetch as-is (e.g. a JSON string, FormData, Blob).",
+      },
+      {
+        name: "signal",
+        detail:
+          "aborts the connection (and stops retrying it) when the signal fires. Independent of the Source's own close(), which also aborts the connection.",
+      },
+      {
+        name: "mode / cache / redirect",
+        detail:
+          'passed through to fetch as-is. See RequestInit["mode"], RequestInit["cache"] and RequestInit["redirect"].',
+      },
+      {
+        name: "credentials",
+        detail:
+          "sets the Authorization header: { basic: { username, password } } sends Basic <base64>; { bearer: { token } } sends Bearer <token>.",
+      },
+      {
+        name: "attempts",
+        detail:
+          "attempts to establish the connection before giving up. Defaults to 1 (no retry).",
+      },
+      {
+        name: "acceptStatus",
+        detail:
+          "decides whether a response's status code counts as accepted. Defaults to 2xx: (statusCode) => statusCode >= 200 && statusCode < 300.",
+      },
+      {
+        name: "reduce",
+        detail:
+          "combines each parsed message with the config tree accumulated so far, overriding the default shallow patch-merge (new fields added, existing ones overwritten, everything else kept). Receives the parsed message as incoming and the previously published tree as previous (null before the first message). A custom reduce replaces that behavior entirely, so it must do its own merging if that's still wanted.",
+      },
     ],
-    note: "A message that isn't valid JSON, or doesn't parse to a plain object, is logged via console.error and skipped — it never resets what was already received. Opening the source waits for the first message (so the Store you get back already has data, not null), then keeps the connection alive in the background, applying further messages as patches until the resource closes the stream.",
+    note: "A message that isn't valid JSON, or doesn't parse to a plain object, is logged via console.error and skipped — it never resets what was already received. Opening the source waits for the first message (so the Store you get back already has data, not null), then keeps the connection alive in the background, applying further messages as patches until the resource closes the stream. Beyond url/method/headers, it accepts the same request-shaping options as fetchSource; attempts only retries the initial connection — once the stream is open, a dropped connection closes the source rather than reconnecting.",
     example: `import { sseSource } from "@jondotsoy/configs/sources/sse";
 
 const source = sseSource<{ port?: number; host?: string }>({
@@ -406,6 +501,11 @@ const source = sseSource<{ port?: number; host?: string }>({
         name: "parser",
         detail:
           "overrides the default parsing entirely: receives the file's raw bytes and returns the parsed config tree. Use it for formats this module doesn't parse itself, like YAML with a library of your choice.",
+      },
+      {
+        name: "reduce",
+        detail:
+          "combines each read with the previously published value instead of replacing it outright. Especially useful with watch (the default), when a later read should merge into what's already there rather than replace it wholesale. Receives the freshly read (and treePath-selected) tree as incoming and the last published value as previous (null before the first read). Defaults to publishing incoming as-is — a full replace.",
       },
     ],
     note: "A missing file, an unrecognized extension, or a parse failure (including on a later watched change) is logged via console.error and leaves the store empty instead of throwing — a parse error on a later change keeps the last good value instead. If treePath points at a missing or non-object segment, it's also logged via console.error, but it still publishes an empty snapshot ({}) instead of null, since the file itself was read and parsed fine.",
@@ -739,7 +839,7 @@ const homeHref = lang === "en" ? "/en" : "/";
         <span
           class="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
         >
-          v1.1.3
+          v1.1.4
         </span>
         <span
           class="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
