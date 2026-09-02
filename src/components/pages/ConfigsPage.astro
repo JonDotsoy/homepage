@@ -3,12 +3,15 @@ import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import Footer from "@/sections/footer.astro";
 import { Code } from "astro:components";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import pageMarkdownEs from "./configs.es.md?raw";
+import pageMarkdownEn from "./configs.en.md?raw";
 
 interface Props {
   lang: "es" | "en";
 }
 
 const { lang } = Astro.props;
+const pageMarkdown = lang === "en" ? pageMarkdownEn : pageMarkdownEs;
 
 const sourcesEs = [
   {
@@ -939,18 +942,19 @@ const homeHref = lang === "en" ? "/en" : "/";
       </button>
     </header>
 
+    <div id="page-markdown-source" class="hidden" set:text={pageMarkdown} />
+
     <script>
       const button = document.getElementById(
         "copy-page-button",
       ) as HTMLButtonElement | null;
       const label = button?.querySelector("span");
+      const markdownSource = document.getElementById("page-markdown-source");
 
       button?.addEventListener("click", async () => {
-        if (!label) return;
+        if (!label || !markdownSource) return;
         try {
-          const response = await fetch(`${location.pathname}.md`);
-          const markdown = await response.text();
-          await navigator.clipboard.writeText(markdown);
+          await navigator.clipboard.writeText(markdownSource.textContent ?? "");
           const original = label.textContent;
           label.textContent = button.dataset.copiedLabel ?? original;
           setTimeout(() => {
