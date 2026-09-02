@@ -1,0 +1,1605 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import Footer from "@/sections/footer.astro";
+import { Code } from "astro:components";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+
+interface Props {
+  lang: "es" | "en";
+}
+
+const { lang } = Astro.props;
+
+const sourcesEs = [
+  {
+    name: "envSource",
+    path: "@jondotsoy/configs/sources/env",
+    description:
+      "Lee variables de entorno — process.env u otro objeto pasado como env — hacia el árbol de config, un campo por clave (mapeada por mapKey).",
+    options: [
+      {
+        name: "env",
+        detail: "los env vars a leer. Por defecto, process.env.",
+      },
+      {
+        name: "prefix",
+        detail:
+          "solo se incluyen claves que empiezan con prefix; el prefix se remueve antes de que corra mapKey.",
+      },
+      {
+        name: "suffix",
+        detail:
+          "solo se incluyen claves que terminan con suffix; el suffix se remueve antes de que corra mapKey.",
+      },
+      {
+        name: "mapKey.snakeCase(options?)",
+        detail:
+          'divide una clave SCREAMING_SNAKE_CASE en un path anidado en minúsculas por separator (por defecto "_"): "FOO_TAR" => ["foo", "tar"]. Un separator distinto (p. ej. "__") evita que un guion bajo dentro de un segmento se divida.',
+      },
+      {
+        name: "mapKey.identity()",
+        detail:
+          'pasa cada clave sin cambios, como un path de un solo segmento: "FOO_TAR" => ["FOO_TAR"]. Es lo mismo que omitir mapKey.',
+      },
+      {
+        name: "mapKey.camelCase()",
+        detail:
+          'mapea una clave a un solo segmento camelCase: "FOO_TAR" => ["fooTar"].',
+      },
+      {
+        name: "mapKey.lookup(table, fallback?)",
+        detail:
+          "mapea claves específicas a paths explícitos vía una tabla Record<string, string[]>; una clave fuera de la tabla cae al fallback (por defecto, la identidad).",
+      },
+    ],
+    note: "También puedes pasar tu propio EnvKeyMapper en vez de una estrategia integrada — es solo una función (key: string) => string[].",
+    example: `import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
+
+// SERVER_PORT=3000 SERVER_HOST=localhost → { server: { port: "3000", host: "localhost" } }
+const source = envSource({ mapKey: mapKey.snakeCase() });
+
+// PORT=3000 HOST=localhost → { server: { port: "3000" }, HOST: "localhost" }
+const source2 = envSource({ mapKey: mapKey.lookup({ PORT: ["server", "port"] }) });`,
+  },
+  {
+    name: "fetchSource",
+    path: "@jondotsoy/configs/sources/fetch",
+    description:
+      "Descarga un snapshot desde url. El body de la respuesta se convierte a T vía bodyParser (por defecto (res) => res.json()), así que también soporta respuestas que no sean JSON pasando un parser propio.",
+    options: [
+      {
+        name: "method",
+        detail: "método HTTP a usar para el request.",
+      },
+      {
+        name: "headers",
+        detail: "headers a enviar con el request.",
+      },
+      {
+        name: "body",
+        detail:
+          "cuerpo del request, se pasa tal cual a fetch (un string JSON, FormData, Blob, etc.).",
+      },
+      {
+        name: "signal",
+        detail:
+          "aborta el fetch en curso (y detiene su reintento) cuando la señal se dispara. Solo cubre una ronda — con pollingInterval activo, las rondas siguientes igual corren; cierra el Source mismo para detener el polling por completo.",
+      },
+      {
+        name: "mode / cache / redirect",
+        detail:
+          'se pasan tal cual a fetch. Ver RequestInit["mode"], RequestInit["cache"] y RequestInit["redirect"].',
+      },
+      {
+        name: "credentials",
+        detail:
+          "arma el header Authorization: { basic: { username, password } } envía Basic <base64>; { bearer: { token } } envía Bearer <token>.",
+      },
+      {
+        name: "bodyParser",
+        detail:
+          "convierte el Response descargado en T. Por defecto, (res) => res.json().",
+      },
+      {
+        name: "acceptStatus",
+        detail:
+          "decide si un status code cuenta como aceptado. Por defecto, 2xx: (statusCode) => statusCode >= 200 && statusCode < 300.",
+      },
+      {
+        name: "attempts",
+        detail:
+          "reintenta la descarga ante un error de red o una respuesta que no sea ok (por defecto 1, sin reintento).",
+      },
+      {
+        name: "pollingInterval",
+        detail:
+          "apagado por defecto (false): fetchSource descarga url una sola vez y se cierra. Pasa un número de milisegundos para activar el polling — sigue re-descargando en ese intervalo (cada ronda reintentada hasta attempts veces) hasta que el Source se cierre.",
+      },
+    ],
+    note: "Si la descarga nunca tiene éxito (error de red, o un status rechazado por acceptStatus tras agotar attempts), o bodyParser lanza, fetchSource registra un console.error y deja el store vacío en vez de lanzar. Una ronda fallida después de la primera se registra y se salta, sin cerrar el source ni detener el polling.",
+    example: `import { fetchSource } from "@jondotsoy/configs/sources/fetch";
+import { Temporal } from "temporal-polyfill";
+
+const source = fetchSource<{ port: number }>({
+  url: "https://config-service.internal/app",
+  method: "GET",
+  headers: { authorization: \`Bearer \${process.env.CONFIG_TOKEN}\` },
+  attempts: 3,
+  // Apagado por defecto — pasa milisegundos para hacer polling en vez de un solo fetch.
+  pollingInterval: Temporal.Duration.from({ seconds: 30 }).total("milliseconds"),
+});`,
+  },
+  {
+    name: "sseSource",
+    path: "@jondotsoy/configs/sources/sse",
+    description:
+      "Se conecta a un endpoint SSE. Cada mensaje intenta parsearse como JSON y, si es un objeto plano, se aplica como patch sobre lo ya recibido — los campos se suman y sobrescriben, el árbol nunca se reemplaza por completo.",
+    options: [
+      {
+        name: "method",
+        detail: "método HTTP para abrir la conexión.",
+      },
+      {
+        name: "headers",
+        detail: "headers a enviar al abrir la conexión SSE.",
+      },
+    ],
+    note: "Un mensaje que no sea JSON válido, o que no parsee a un objeto plano, se registra vía console.error y se salta — nunca resetea lo ya recibido. Abrir el source espera el primer mensaje (así el Store que recibes ya trae datos, no null), y luego mantiene la conexión viva en segundo plano, aplicando más mensajes como patches hasta que el recurso cierre el stream.",
+    example: `import { sseSource } from "@jondotsoy/configs/sources/sse";
+
+const source = sseSource<{ port?: number; host?: string }>({
+  url: "https://config-service.internal/app/events",
+});
+
+// mensaje: {"port":3000}       => Store<{ port: 3000 }>
+// mensaje: {"host":"10.0.0.1"} => Store<{ port: 3000, host: "10.0.0.1" }>`,
+  },
+  {
+    name: "fileSource",
+    path: "@jondotsoy/configs/sources/file",
+    description:
+      "Lee un árbol de config desde path — un string o una URL file: —, parseado según su extensión: .json o .env por defecto (por extensión, o por el nombre de archivo .env a secas — un archivo .env siempre parsea a un mapa plano de strings, una entrada por línea KEY=VALUE, saltando líneas en blanco y comentarios #), o cualquier otro formato vía un parser propio.",
+    options: [
+      {
+        name: "watch",
+        detail:
+          "true por defecto: el archivo se relee y el store se actualiza en vivo en cada cambio; watch: false lo lee una sola vez.",
+      },
+      {
+        name: "treePath",
+        detail:
+          'selecciona un subárbol del archivo parseado para usar como árbol de config, p. ej. ["containers", "settings"] para usar el objeto interno de { containers: { settings: {...} } } e ignorar el resto. Por defecto [] usa el archivo completo, sin cambios.',
+      },
+      {
+        name: "format",
+        detail:
+          'elige qué parser integrado usar — "json" o "env" — sobreescribiendo la detección por extensión. Útil cuando path no tiene una extensión que detectar. Se ignora si parser está definido.',
+      },
+      {
+        name: "parser",
+        detail:
+          "sobreescribe el parseo por defecto: recibe los bytes crudos del archivo y retorna el árbol de config parseado. Útil para formatos que este módulo no parsea, como YAML con una librería propia.",
+      },
+    ],
+    note: "Un archivo ausente, una extensión no reconocida, o un parseo fallido (incluso en un cambio observado posterior) se registra vía console.error y deja el store vacío en vez de lanzar — un error de parseo en un cambio posterior conserva el último valor bueno. Si treePath apunta a un segmento ausente o que no es un objeto, también se registra un error, pero igual publica un snapshot vacío ({}) en vez de null, ya que el archivo sí se leyó y parseó bien.",
+    example: `import { fileSource } from "@jondotsoy/configs/sources/file";
+
+const source = fileSource<{ port: number; host: string }>("./config.json");
+// config.json: { "port": 3000, "host": "localhost" }`,
+  },
+  {
+    name: "pullSource",
+    path: "@jondotsoy/configs/sources/pull",
+    description:
+      "Llama a pull y publica lo que retorne como el siguiente snapshot — una vez de inmediato, y luego de nuevo cada interval milisegundos hasta que el Source se cierre. pull puede ser sync o async, así que es un escape hatch de propósito general para cualquier input que no esté cubierto por un source integrado (una consulta a base de datos, un secrets manager en la nube, una llamada gRPC, ...).",
+    options: [
+      {
+        name: "pull",
+        detail:
+          "función llamada en cada ronda para producir un snapshot nuevo. Puede ser sync o async.",
+      },
+      {
+        name: "interval",
+        detail: "milisegundos entre llamadas a pull.",
+      },
+    ],
+    note: "Un fallo de pull se registra vía console.error y se traga en vez de lanzarse: en la primera llamada esto deja el store vacío (igual que fetchSource); en una llamada posterior se salta, conservando el último valor bueno y el polling sigue corriendo.",
+    example: `import { pullSource } from "@jondotsoy/configs/sources/pull";
+import { Temporal } from "temporal-polyfill";
+
+const source = pullSource<{ port: number }>({
+  pull: async () => fetchPortFromSomewhere(),
+  interval: Temporal.Duration.from({ seconds: 30 }).total("milliseconds"),
+});`,
+  },
+  {
+    name: "literalSource",
+    path: "@jondotsoy/configs/sources/literal",
+    description:
+      "Publica un valor plano que ya tienes a mano (value) como snapshot de inmediato, y luego se cierra. Sin I/O, sin opciones — solo envuelve value en un Source para que pueda ir en un arreglo sources junto al resto.",
+    note: "Útil como árbol de respaldo estático (ponlo al final, para que ganen los sources reales), como default hardcodeado para un solo ambiente, o como source de relleno en un test.",
+    example: `import { configs } from "@jondotsoy/configs";
+import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
+import { literalSource } from "@jondotsoy/configs/sources/literal";
+
+const cfg = await configs.create(
+  {
+    port: { type: "number", required: true },
+    host: { type: "string", required: true },
+  },
+  {
+    sources: [
+      envSource({ mapKey: mapKey.snakeCase() }),
+      literalSource({ port: 3000, host: "localhost" }), // respaldo si faltan las env vars
+    ],
+  },
+);`,
+  },
+];
+
+const sourcesEn = [
+  {
+    name: "envSource",
+    path: "@jondotsoy/configs/sources/env",
+    description:
+      "Reads environment variables — process.env or another object passed as env — into the config tree, one field per key (mapped by mapKey).",
+    options: [
+      {
+        name: "env",
+        detail: "the env vars to read. Defaults to process.env.",
+      },
+      {
+        name: "prefix",
+        detail:
+          "only keys starting with prefix are included; the prefix is stripped before mapKey runs.",
+      },
+      {
+        name: "suffix",
+        detail:
+          "only keys ending with suffix are included; the suffix is stripped before mapKey runs.",
+      },
+      {
+        name: "mapKey.snakeCase(options?)",
+        detail:
+          'splits a SCREAMING_SNAKE_CASE key into a lowercase nested path on separator (default "_"): "FOO_TAR" => ["foo", "tar"]. A different separator (e.g. "__") keeps a single underscore inside a segment from splitting it.',
+      },
+      {
+        name: "mapKey.identity()",
+        detail:
+          'passes each key through unchanged, as a single-segment path: "FOO_TAR" => ["FOO_TAR"]. Same as omitting mapKey.',
+      },
+      {
+        name: "mapKey.camelCase()",
+        detail:
+          'maps a key to a single camelCase segment: "FOO_TAR" => ["fooTar"].',
+      },
+      {
+        name: "mapKey.lookup(table, fallback?)",
+        detail:
+          "maps specific keys to explicit paths via a Record<string, string[]> lookup table; a key not in the table falls back to fallback (default: the identity).",
+      },
+    ],
+    note: "You can also pass your own EnvKeyMapper instead of a built-in strategy — it's just a (key: string) => string[] function.",
+    example: `import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
+
+// SERVER_PORT=3000 SERVER_HOST=localhost → { server: { port: "3000", host: "localhost" } }
+const source = envSource({ mapKey: mapKey.snakeCase() });
+
+// PORT=3000 HOST=localhost → { server: { port: "3000" }, HOST: "localhost" }
+const source2 = envSource({ mapKey: mapKey.lookup({ PORT: ["server", "port"] }) });`,
+  },
+  {
+    name: "fetchSource",
+    path: "@jondotsoy/configs/sources/fetch",
+    description:
+      "Fetches a snapshot from url. The response body is turned into T by bodyParser (defaulting to (res) => res.json()), so non-JSON responses are supported by passing a custom parser.",
+    options: [
+      {
+        name: "method",
+        detail: "the HTTP method to use for the request.",
+      },
+      {
+        name: "headers",
+        detail: "headers to send with the request.",
+      },
+      {
+        name: "body",
+        detail:
+          "request body, passed through to fetch as-is (e.g. a JSON string, FormData, Blob).",
+      },
+      {
+        name: "signal",
+        detail:
+          "aborts the in-flight fetch (and stops retrying it) when the signal fires. Only covers a single round — with pollingInterval set, later rounds still run; close the Source itself to stop polling entirely.",
+      },
+      {
+        name: "mode / cache / redirect",
+        detail:
+          'passed through to fetch as-is. See RequestInit["mode"], RequestInit["cache"] and RequestInit["redirect"].',
+      },
+      {
+        name: "credentials",
+        detail:
+          "sets the Authorization header: { basic: { username, password } } sends Basic <base64>; { bearer: { token } } sends Bearer <token>.",
+      },
+      {
+        name: "bodyParser",
+        detail:
+          "turns the fetched Response into T. Defaults to (res) => res.json().",
+      },
+      {
+        name: "acceptStatus",
+        detail:
+          "decides whether a response's status code counts as accepted. Defaults to 2xx: (statusCode) => statusCode >= 200 && statusCode < 300.",
+      },
+      {
+        name: "attempts",
+        detail:
+          "retries the download on a network error or a non-ok response (default 1, no retry).",
+      },
+      {
+        name: "pollingInterval",
+        detail:
+          "off by default (false): fetchSource fetches url once and closes. Pass a number of milliseconds to turn polling on — it keeps re-fetching on that interval (each round still retried up to attempts times) until the Source is closed.",
+      },
+    ],
+    note: "If the download never succeeds (a network error, or a status rejected by acceptStatus after exhausting attempts), or bodyParser throws, fetchSource logs a console.error and leaves the store empty instead of throwing. A failed round after the first one is logged and skipped, without closing the source or stopping the polling.",
+    example: `import { fetchSource } from "@jondotsoy/configs/sources/fetch";
+import { Temporal } from "temporal-polyfill";
+
+const source = fetchSource<{ port: number }>({
+  url: "https://config-service.internal/app",
+  method: "GET",
+  headers: { authorization: \`Bearer \${process.env.CONFIG_TOKEN}\` },
+  attempts: 3,
+  // Off by default — pass milliseconds to poll instead of a single fetch.
+  pollingInterval: Temporal.Duration.from({ seconds: 30 }).total("milliseconds"),
+});`,
+  },
+  {
+    name: "sseSource",
+    path: "@jondotsoy/configs/sources/sse",
+    description:
+      "Connects to an SSE endpoint. Every message tries to parse as JSON and, if it's a plain object, is applied as a patch on top of what was already received — fields add up and overwrite, the tree is never replaced wholesale.",
+    options: [
+      {
+        name: "method",
+        detail: "the HTTP method used to open the connection.",
+      },
+      {
+        name: "headers",
+        detail: "headers to send when opening the SSE connection.",
+      },
+    ],
+    note: "A message that isn't valid JSON, or doesn't parse to a plain object, is logged via console.error and skipped — it never resets what was already received. Opening the source waits for the first message (so the Store you get back already has data, not null), then keeps the connection alive in the background, applying further messages as patches until the resource closes the stream.",
+    example: `import { sseSource } from "@jondotsoy/configs/sources/sse";
+
+const source = sseSource<{ port?: number; host?: string }>({
+  url: "https://config-service.internal/app/events",
+});
+
+// message: {"port":3000}       => Store<{ port: 3000 }>
+// message: {"host":"10.0.0.1"} => Store<{ port: 3000, host: "10.0.0.1" }>`,
+  },
+  {
+    name: "fileSource",
+    path: "@jondotsoy/configs/sources/file",
+    description:
+      "Reads a config tree from path — a string or a file: URL —, parsed by its extension: .json or .env by default (matched by extension, or by the bare .env filename itself — a .env file always parses to a flat string map, one entry per KEY=VALUE line, blank lines and #-comments skipped), or any other format via a custom parser.",
+    options: [
+      {
+        name: "watch",
+        detail:
+          "defaults to true: the file is re-read and the store updated live on every change; watch: false reads it once.",
+      },
+      {
+        name: "treePath",
+        detail:
+          'selects a subtree of the parsed file to use as the config tree, e.g. ["containers", "settings"] to use { containers: { settings: {...} } }\'s inner object and ignore the rest of the file. Defaults to [], the whole parsed file unchanged.',
+      },
+      {
+        name: "format",
+        detail:
+          'picks which built-in parser to use — "json" or "env" — overriding extension-based detection. Handy when path has no extension to detect. Ignored when parser is set.',
+      },
+      {
+        name: "parser",
+        detail:
+          "overrides the default parsing entirely: receives the file's raw bytes and returns the parsed config tree. Use it for formats this module doesn't parse itself, like YAML with a library of your choice.",
+      },
+    ],
+    note: "A missing file, an unrecognized extension, or a parse failure (including on a later watched change) is logged via console.error and leaves the store empty instead of throwing — a parse error on a later change keeps the last good value instead. If treePath points at a missing or non-object segment, it's also logged via console.error, but it still publishes an empty snapshot ({}) instead of null, since the file itself was read and parsed fine.",
+    example: `import { fileSource } from "@jondotsoy/configs/sources/file";
+
+const source = fileSource<{ port: number; host: string }>("./config.json");
+// config.json: { "port": 3000, "host": "localhost" }`,
+  },
+  {
+    name: "pullSource",
+    path: "@jondotsoy/configs/sources/pull",
+    description:
+      "Calls pull and publishes whatever it returns as the next snapshot — once immediately, then again every interval milliseconds until the Source is closed. pull can be sync or async, so it's a general-purpose escape hatch for any input that isn't already covered by a built-in source (a database query, a cloud secrets manager, a gRPC call, ...).",
+    options: [
+      {
+        name: "pull",
+        detail:
+          "called on every round to produce a fresh snapshot. May be sync or async.",
+      },
+      {
+        name: "interval",
+        detail: "milliseconds between calls to pull.",
+      },
+    ],
+    note: "A pull failure is logged via console.error and swallowed instead of thrown: on the first call this leaves the store empty (same as fetchSource); on a later call it's skipped, keeping the last good value and the polling running.",
+    example: `import { pullSource } from "@jondotsoy/configs/sources/pull";
+import { Temporal } from "temporal-polyfill";
+
+const source = pullSource<{ port: number }>({
+  pull: async () => fetchPortFromSomewhere(),
+  interval: Temporal.Duration.from({ seconds: 30 }).total("milliseconds"),
+});`,
+  },
+  {
+    name: "literalSource",
+    path: "@jondotsoy/configs/sources/literal",
+    description:
+      "Publishes a plain, already-in-hand value as a snapshot immediately, then closes. No I/O, no options — just wraps value in a Source so it can sit in a sources array alongside the rest.",
+    note: "Handy as a static fallback tree (put it last so real sources win), a hardcoded default for a single environment, or a stand-in source in a test.",
+    example: `import { configs } from "@jondotsoy/configs";
+import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
+import { literalSource } from "@jondotsoy/configs/sources/literal";
+
+const cfg = await configs.create(
+  {
+    port: { type: "number", required: true },
+    host: { type: "string", required: true },
+  },
+  {
+    sources: [
+      envSource({ mapKey: mapKey.snakeCase() }),
+      literalSource({ port: 3000, host: "localhost" }), // fallback if env vars are unset
+    ],
+  },
+);`,
+  },
+];
+
+const sources = lang === "en" ? sourcesEn : sourcesEs;
+
+const configsJsonExample = `{
+  "features": {
+    "promoService": false
+  }
+}`;
+
+const configsTsExample = `import { configs } from "@jondotsoy/configs";
+import { envSource, mapKey } from "@jondotsoy/configs/sources/env";
+import { fileSource } from "@jondotsoy/configs/sources/file";
+
+export default await configs.create(
+  {
+    server: configs.create(
+      {
+        port: { type: "number", summary: "HTTP port", default: 3000 },
+        host: { type: "string", summary: "bind host", default: "localhost" },
+      },
+      { sources: [ envSource({ mapKey: mapKey.camelCase() }) ] }
+    ),
+    features: configs.create({
+      promoService: {
+        type: "boolean",
+        summary: "enable the promo service",
+        default: false,
+      },
+    }),
+  },
+  { sources: [fileSource("./configs.json")] },
+);`;
+
+const configsEnvExample = `PORT=3000
+HOST=localhost`;
+
+const appTsxExample = `import { configs } from "@jondotsoy/configs";
+import { fetchSource } from "@jondotsoy/configs/sources/fetch";
+import { useConfig } from "@jondotsoy/configs/react";
+import { Temporal } from "temporal-polyfill";
+
+const cfg = await configs.create(
+  {
+    features: configs.create({
+      promoService: { type: "boolean", summary: "enable the promo service", default: false },
+    }),
+  },
+  {
+    sources: [
+      fetchSource({
+        url: "http://my-resource/features.json",
+        pollingInterval: Temporal.Duration.from({ minutes: 1 }).total("milliseconds"),
+      }),
+    ],
+  },
+);
+
+export default function App() {
+  const promoService = useConfig(cfg.features.promoService);
+
+  return <p>Promo service is {promoService ? "on" : "off"}</p>;
+}`;
+
+const featuresJsonExample = `HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "features": {
+    "promoService": true
+  }
+}`;
+
+const configMapExample = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  configs.json: |
+    {
+      "features": {
+        "promoService": true
+      }
+    }`;
+
+const deploymentExample = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: registry.example.com/app:latest
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+      volumes:
+        - name: config
+          configMap:
+            name: app-config`;
+
+const k8sServerExampleEs = `import { configs } from "@jondotsoy/configs";
+import { fileSource } from "@jondotsoy/configs/sources/file";
+
+const cfg = await configs.create(
+  {
+    features: configs.create({
+      promoService: { type: "boolean", summary: "enable the promo service", default: false },
+    }),
+  },
+  // fileSource relee el archivo cada vez que kubelet sincroniza el ConfigMap montado
+  { sources: [fileSource("/etc/config/configs.json")] },
+);
+
+cfg.features.promoService.subscribe((enabled) => {
+  console.log(\`promo service \${enabled ? "enabled" : "disabled"}\`);
+});`;
+
+const k8sServerExampleEn = `import { configs } from "@jondotsoy/configs";
+import { fileSource } from "@jondotsoy/configs/sources/file";
+
+const cfg = await configs.create(
+  {
+    features: configs.create({
+      promoService: { type: "boolean", summary: "enable the promo service", default: false },
+    }),
+  },
+  // fileSource re-reads the file every time kubelet syncs the mounted ConfigMap
+  { sources: [fileSource("/etc/config/configs.json")] },
+);
+
+cfg.features.promoService.subscribe((enabled) => {
+  console.log(\`promo service \${enabled ? "enabled" : "disabled"}\`);
+});`;
+
+const k8sServerExample =
+  lang === "en" ? k8sServerExampleEn : k8sServerExampleEs;
+
+const closingExampleEs = `import { configs } from "@jondotsoy/configs";
+import { sseSource } from "@jondotsoy/configs/sources/sse";
+
+const source = sseSource({ url: "https://config-service.internal/app/events" });
+const serverConfigs = await configs.create({ port: { type: "number" } }, { sources: [source] });
+
+await serverConfigs.close();
+
+// o, con Symbol.asyncDispose:
+async function run() {
+  await using serverConfigs = await configs.create(
+    { port: { type: "number" } },
+    { sources: [sseSource({ url: "https://config-service.internal/app/events" })] },
+  );
+
+  console.log(serverConfigs.port.get());
+  // se cierra automáticamente aquí, sin necesidad de serverConfigs.close()
+}`;
+
+const closingExampleEn = `import { configs } from "@jondotsoy/configs";
+import { sseSource } from "@jondotsoy/configs/sources/sse";
+
+const source = sseSource({ url: "https://config-service.internal/app/events" });
+const serverConfigs = await configs.create({ port: { type: "number" } }, { sources: [source] });
+
+await serverConfigs.close();
+
+// or, with Symbol.asyncDispose:
+async function run() {
+  await using serverConfigs = await configs.create(
+    { port: { type: "number" } },
+    { sources: [sseSource({ url: "https://config-service.internal/app/events" })] },
+  );
+
+  console.log(serverConfigs.port.get());
+  // closed automatically here, no need for serverConfigs.close()
+}`;
+
+const closingExample = lang === "en" ? closingExampleEn : closingExampleEs;
+
+const reactExampleEs = `import { useConfig } from "@jondotsoy/configs/react";
+
+function ServerStatus({ cfg }: { cfg: typeof serverConfigs }) {
+  const port = useConfig(cfg.server.port);
+  const promoService = useConfig(cfg.features.promoService);
+
+  return (
+    <p>
+      Escuchando en el puerto {port} — promo service {promoService ? "on" : "off"}
+    </p>
+  );
+}`;
+
+const reactExampleEn = `import { useConfig } from "@jondotsoy/configs/react";
+
+function ServerStatus({ cfg }: { cfg: typeof serverConfigs }) {
+  const port = useConfig(cfg.server.port);
+  const promoService = useConfig(cfg.features.promoService);
+
+  return (
+    <p>
+      Listening on port {port} — promo service {promoService ? "on" : "off"}
+    </p>
+  );
+}`;
+
+const reactExample = lang === "en" ? reactExampleEn : reactExampleEs;
+
+const tocEs = [
+  { id: "instalacion", label: "Instalación" },
+  { id: "por-que", label: "Por qué" },
+  { id: "ejemplo-rapido", label: "Ejemplos" },
+  {
+    id: "sources",
+    label: "Sources",
+    children: sources.map((source) => ({
+      id: source.name,
+      label: source.name,
+    })),
+  },
+  { id: "react", label: "Integración con React" },
+  { id: "k8s", label: "Integración con Kubernetes" },
+  { id: "cerrando", label: "Cerrando un árbol de config" },
+];
+
+const tocEn = [
+  { id: "instalacion", label: "Install" },
+  { id: "por-que", label: "Why" },
+  { id: "ejemplo-rapido", label: "Examples" },
+  {
+    id: "sources",
+    label: "Sources",
+    children: sources.map((source) => ({
+      id: source.name,
+      label: source.name,
+    })),
+  },
+  { id: "react", label: "React integration" },
+  { id: "k8s", label: "Kubernetes integration" },
+  { id: "cerrando", label: "Closing a config tree" },
+];
+
+const toc = lang === "en" ? tocEn : tocEs;
+
+const pageTitle =
+  lang === "en"
+    ? "@jondotsoy/configs — Jonathan Delgado"
+    : "@jondotsoy/configs — Jonathan Delgado";
+
+const pageDescription =
+  lang === "en"
+    ? "Reactive, typed configuration library backed by pluggable sources: env, fetch, sse, file, pull and literal."
+    : "Librería de configuración reactiva y tipada respaldada por fuentes conectables: env, fetch, sse, file, pull y literal.";
+
+const homeHref = lang === "en" ? "/en" : "/";
+---
+
+<DefaultLayout title={pageTitle} description={pageDescription} lang={lang}>
+  <main class="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16">
+    <header>
+      <a
+        href={homeHref}
+        class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        {lang === "en" ? "Home" : "Inicio"}
+      </a>
+    </header>
+
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-3xl font-semibold text-foreground">
+          @jondotsoy/configs
+        </h1>
+        <span
+          class="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+        >
+          v1.1.3
+        </span>
+        <span
+          class="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+        >
+          MIT
+        </span>
+      </div>
+      {
+        lang === "en" ? (
+          <p class="text-base text-muted-foreground">
+            Reactive, typed configuration for your apps, backed by pluggable
+            sources: feature flags, remote toggles, and settings served over
+            HTTP or SSE that change at runtime. Every field is a live{" "}
+            <code class="rounded bg-muted px-1 py-0.5 text-sm text-foreground">
+              Store
+            </code>{" "}
+            — subscribe to it and react the moment a source pushes a new value.
+          </p>
+        ) : (
+          <p class="text-base text-muted-foreground">
+            Configuración reactiva y tipada para tus apps, respaldada por
+            fuentes conectables: feature flags, toggles remotos y settings
+            servidos por HTTP o SSE que cambian en tiempo real. Cada campo es un{" "}
+            <code class="rounded bg-muted px-1 py-0.5 text-sm text-foreground">
+              Store
+            </code>{" "}
+            vivo — te suscribes y reaccionas apenas una fuente publica un nuevo
+            valor.
+          </p>
+        )
+      }
+      <div class="flex flex-wrap gap-3 text-sm">
+        <a
+          href="https://www.npmjs.com/package/@jondotsoy/configs"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          npm
+          <ExternalLink className="size-3.5" />
+        </a>
+        <a
+          href="https://github.com/JonDotsoy/configs"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          GitHub
+          <ExternalLink className="size-3.5" />
+        </a>
+      </div>
+    </div>
+
+    <nav
+      aria-label={lang === "en" ? "Table of contents" : "Tabla de contenidos"}
+      class="flex flex-col gap-2 rounded-md border border-border p-4 text-sm"
+    >
+      <span class="font-medium text-foreground">
+        {lang === "en" ? "Contents" : "Contenido"}
+      </span>
+      <ul class="flex flex-col gap-1.5">
+        {
+          toc.map((item) => (
+            <li>
+              <a
+                href={`#${item.id}`}
+                class="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </a>
+              {item.children && (
+                <ul class="mt-1.5 flex flex-col gap-1.5 border-l border-border pl-3">
+                  {item.children.map((child) => (
+                    <li>
+                      <a
+                        href={`#${child.id}`}
+                        class="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <section id="instalacion" class="flex flex-col gap-3">
+      <h2 class="text-lg font-semibold text-foreground">
+        {lang === "en" ? "Install" : "Instalación"}
+      </h2>
+      <div
+        class="overflow-x-auto rounded-md border border-border text-sm [&_pre]:!m-0 [&_pre]:px-4 [&_pre]:py-3"
+      >
+        <Code
+          code="npm install @jondotsoy/configs"
+          lang="bash"
+          theme="github-dark"
+        />
+      </div>
+    </section>
+
+    <section id="por-que" class="flex flex-col gap-4">
+      <h2 class="text-lg font-semibold text-foreground">
+        {lang === "en" ? "Why" : "Por qué"}
+      </h2>
+      {
+        lang === "en" ? (
+          <ul class="flex flex-col gap-3 text-sm text-muted-foreground">
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">
+                  Reactive configs
+                </span>{" "}
+                — every field is a live Store; subscribe to it and get notified
+                whenever an upstream source changes.
+              </span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">Lightweight</span> —
+                no dependencies, just a thin layer over plain objects and
+                stores.
+              </span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">
+                  Typed with TS check
+                </span>{" "}
+                — schemas are statically checked, so{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  cfg.port.get()
+                </code>{" "}
+                is inferred as{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  number | null
+                </code>{" "}
+                (or{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  number
+                </code>{" "}
+                with a{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  default
+                </code>
+                ), not{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  any
+                </code>
+                .
+              </span>
+            </li>
+          </ul>
+        ) : (
+          <ul class="flex flex-col gap-3 text-sm text-muted-foreground">
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">
+                  Configs reactivas
+                </span>{" "}
+                — cada campo es un Store vivo; te suscribes y te notifica cada
+                vez que una fuente upstream cambia.
+              </span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">Liviana</span> — sin
+                dependencias, solo una capa delgada sobre objetos planos y
+                stores.
+              </span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-foreground" aria-hidden="true">
+                •
+              </span>
+              <span>
+                <span class="font-medium text-foreground">
+                  Tipada con chequeo TS
+                </span>{" "}
+                — los schemas se verifican estáticamente, así{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  cfg.port.get()
+                </code>{" "}
+                se infiere como{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  number | null
+                </code>{" "}
+                (o{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  number
+                </code>{" "}
+                con un{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  default
+                </code>
+                ), no{" "}
+                <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                  any
+                </code>
+                .
+              </span>
+            </li>
+          </ul>
+        )
+      }
+    </section>
+
+    <section id="ejemplo-rapido" class="flex flex-col gap-3">
+      <h2 class="text-lg font-semibold text-foreground">
+        {lang === "en" ? "Examples" : "Ejemplos"}
+      </h2>
+
+      <div
+        class="ide overflow-hidden rounded-md border border-border"
+        role="radiogroup"
+        aria-label={lang === "en"
+          ? "Example: configs.ts, .env or configs.json"
+          : "Ejemplo: configs.ts, .env o configs.json"}
+      >
+        <input
+          type="radio"
+          id="ide-tab-ts"
+          name="ide-tab"
+          class="ide-input"
+          checked
+        />
+        <input type="radio" id="ide-tab-env" name="ide-tab" class="ide-input" />
+        <input
+          type="radio"
+          id="ide-tab-json"
+          name="ide-tab"
+          class="ide-input"
+        />
+
+        <div
+          class="ide-titlebar flex items-center gap-1.5 px-3 py-2"
+          aria-hidden="true"
+        >
+          <span class="size-2.5 rounded-full bg-[#ff5f56]"></span>
+          <span class="size-2.5 rounded-full bg-[#ffbd2e]"></span>
+          <span class="size-2.5 rounded-full bg-[#27c93f]"></span>
+        </div>
+
+        <div class="ide-tabs-row flex text-xs">
+          <label
+            for="ide-tab-ts"
+            class="ide-tab"
+            data-tab="ts"
+            aria-controls="ide-panel-ts"
+          >
+            <span class="ide-tab-dot bg-[#3178c6]" aria-hidden="true"></span>
+            configs.ts
+          </label>
+          <label
+            for="ide-tab-env"
+            class="ide-tab"
+            data-tab="env"
+            aria-controls="ide-panel-env"
+          >
+            <span class="ide-tab-dot bg-[#4ade80]" aria-hidden="true"></span>
+            .env
+          </label>
+          <label
+            for="ide-tab-json"
+            class="ide-tab"
+            data-tab="json"
+            aria-controls="ide-panel-json"
+          >
+            <span class="ide-tab-dot bg-[#f1e05a]" aria-hidden="true"></span>
+            configs.json
+          </label>
+        </div>
+
+        <div
+          id="ide-panel-ts"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="ts"
+        >
+          <Code code={configsTsExample} lang="ts" theme="github-dark" />
+        </div>
+        <div
+          id="ide-panel-env"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="env"
+        >
+          <Code code={configsEnvExample} lang="ini" theme="github-dark" />
+        </div>
+        <div
+          id="ide-panel-json"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="json"
+        >
+          <Code code={configsJsonExample} lang="json" theme="github-dark" />
+        </div>
+      </div>
+
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              Or with{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                fetchSource
+              </code>{" "}
+              polling a remote resource every minute:
+            </>
+          ) : (
+            <>
+              O con{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                fetchSource
+              </code>{" "}
+              haciendo polling cada minuto a un recurso remoto:
+            </>
+          )
+        }
+      </p>
+
+      <div
+        class="ide overflow-hidden rounded-md border border-border"
+        role="radiogroup"
+        aria-label={lang === "en"
+          ? "Example: App.tsx or the remote resource"
+          : "Ejemplo: App.tsx o el recurso remoto"}
+      >
+        <input
+          type="radio"
+          id="ide2-tab-app"
+          name="ide2-tab"
+          class="ide-input"
+          checked
+        />
+        <input
+          type="radio"
+          id="ide2-tab-remote"
+          name="ide2-tab"
+          class="ide-input"
+        />
+
+        <div
+          class="ide-titlebar flex items-center gap-1.5 px-3 py-2"
+          aria-hidden="true"
+        >
+          <span class="size-2.5 rounded-full bg-[#ff5f56]"></span>
+          <span class="size-2.5 rounded-full bg-[#ffbd2e]"></span>
+          <span class="size-2.5 rounded-full bg-[#27c93f]"></span>
+        </div>
+
+        <div class="ide-tabs-row flex text-xs">
+          <label
+            for="ide2-tab-app"
+            class="ide-tab"
+            data-tab="app"
+            aria-controls="ide2-panel-app"
+          >
+            <span class="ide-tab-dot bg-[#3178c6]" aria-hidden="true"></span>
+            App.tsx
+          </label>
+          <label
+            for="ide2-tab-remote"
+            class="ide-tab"
+            data-tab="remote"
+            aria-controls="ide2-panel-remote"
+          >
+            <span class="ide-tab-dot bg-[#f1e05a]" aria-hidden="true"></span>
+            http://my-resource/features.json
+          </label>
+        </div>
+
+        <div
+          id="ide2-panel-app"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="app"
+        >
+          <Code code={appTsxExample} lang="tsx" theme="github-dark" />
+        </div>
+        <div
+          id="ide2-panel-remote"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="remote"
+        >
+          <Code code={featuresJsonExample} lang="http" theme="github-dark" />
+        </div>
+      </div>
+    </section>
+
+    <style>
+      .ide {
+        background: #0d1117;
+      }
+      .ide-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .ide-titlebar {
+        background: #161b22;
+        border-bottom: 1px solid rgb(255 255 255 / 8%);
+      }
+      .ide-tabs-row {
+        background: #0d1117;
+      }
+      .ide-tab {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.5rem;
+        border-right: 1px solid rgb(255 255 255 / 6%);
+        border-bottom: 2px solid transparent;
+        padding: 0.5rem 1rem;
+        color: rgb(255 255 255 / 45%);
+      }
+      .ide-tab:hover {
+        color: rgb(255 255 255 / 75%);
+      }
+      .ide-tab-dot {
+        display: inline-block;
+        size: 0.375rem;
+        width: 0.375rem;
+        height: 0.375rem;
+        border-radius: 9999px;
+      }
+      .ide-panel {
+        display: none;
+      }
+      #ide-tab-json:checked ~ .ide-tabs-row [data-tab="json"],
+      #ide-tab-ts:checked ~ .ide-tabs-row [data-tab="ts"],
+      #ide-tab-env:checked ~ .ide-tabs-row [data-tab="env"],
+      #ide2-tab-app:checked ~ .ide-tabs-row [data-tab="app"],
+      #ide2-tab-remote:checked ~ .ide-tabs-row [data-tab="remote"],
+      #ide3-tab-server:checked ~ .ide-tabs-row [data-tab="server"],
+      #ide3-tab-cm:checked ~ .ide-tabs-row [data-tab="cm"],
+      #ide3-tab-deploy:checked ~ .ide-tabs-row [data-tab="deploy"] {
+        border-bottom-color: #58a6ff;
+        color: rgb(255 255 255 / 92%);
+      }
+      #ide-tab-json:checked ~ .ide-panel[data-panel="json"],
+      #ide-tab-ts:checked ~ .ide-panel[data-panel="ts"],
+      #ide-tab-env:checked ~ .ide-panel[data-panel="env"],
+      #ide2-tab-app:checked ~ .ide-panel[data-panel="app"],
+      #ide2-tab-remote:checked ~ .ide-panel[data-panel="remote"],
+      #ide3-tab-server:checked ~ .ide-panel[data-panel="server"],
+      #ide3-tab-cm:checked ~ .ide-panel[data-panel="cm"],
+      #ide3-tab-deploy:checked ~ .ide-panel[data-panel="deploy"] {
+        display: block;
+      }
+    </style>
+
+    <section id="sources" class="flex flex-col gap-4">
+      <h2 class="text-lg font-semibold text-foreground">Sources</h2>
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              Every config tree is built from pluggable{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Source
+              </code>
+              s. You can also build your own with{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Source
+              </code>{" "}
+              directly.
+            </>
+          ) : (
+            <>
+              Cada árbol de config se arma a partir de{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Source
+              </code>
+              s conectables. También puedes construir uno propio con{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Source
+              </code>{" "}
+              directamente.
+            </>
+          )
+        }
+      </p>
+      <ul class="flex flex-col gap-6">
+        {
+          sources.map((source) => (
+            <li id={source.name}>
+              <article class="flex flex-col gap-3 rounded-md border border-border p-4">
+                <header class="flex flex-col gap-0.5">
+                  <h3 class="font-mono text-base font-medium text-foreground">
+                    {source.name}
+                  </h3>
+                  <p class="font-mono text-xs text-muted-foreground">
+                    {source.path}
+                  </p>
+                </header>
+
+                <p class="text-sm text-muted-foreground">
+                  {source.description}
+                </p>
+
+                {source.options && (
+                  <dl class="flex flex-col gap-2 text-sm text-muted-foreground">
+                    {source.options.map((option) => (
+                      <div class="flex flex-col gap-0.5">
+                        <dt>
+                          <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                            {option.name}
+                          </code>
+                        </dt>
+                        <dd class="pl-3">{option.detail}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {source.note && (
+                  <p class="text-sm text-muted-foreground">{source.note}</p>
+                )}
+
+                <div class="overflow-x-auto rounded-md border border-border text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:px-4 [&_pre]:py-3">
+                  <Code code={source.example} lang="ts" theme="github-dark" />
+                </div>
+              </article>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section id="react" class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="text-lg font-semibold text-foreground">
+          {lang === "en" ? "React integration" : "Integración con React"}
+        </h2>
+        <span
+          class="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+        >
+          {lang === "en" ? "new in v1.1.1" : "nuevo en v1.1.1"}
+        </span>
+      </div>
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                @jondotsoy/configs/react
+              </code>{" "}
+              exposes{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                useConfig(store)
+              </code>
+              , a hook that subscribes a component to a{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Store
+              </code>
+              /
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ReadOnlyStore
+              </code>{" "}
+              via{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                useSyncExternalStore
+              </code>{" "}
+              and re-renders on every update.{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                react
+              </code>{" "}
+              is an optional peer dependency (
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                &gt;=18
+              </code>
+              ) — only needed if you import this entrypoint.
+            </>
+          ) : (
+            <>
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                @jondotsoy/configs/react
+              </code>{" "}
+              expone{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                useConfig(store)
+              </code>
+              , un hook que suscribe un componente a un{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Store
+              </code>
+              /
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ReadOnlyStore
+              </code>{" "}
+              vía{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                useSyncExternalStore
+              </code>{" "}
+              y re-renderiza en cada actualización.{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                react
+              </code>{" "}
+              es un peer dependency opcional (
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                &gt;=18
+              </code>
+              ) — solo se necesita si importas este entrypoint.
+            </>
+          )
+        }
+      </p>
+      <div
+        class="overflow-x-auto rounded-md border border-border text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:px-4 [&_pre]:py-3"
+      >
+        <Code code={reactExample} lang="tsx" theme="github-dark" />
+      </div>
+    </section>
+
+    <section id="k8s" class="flex flex-col gap-3">
+      <h2 class="text-lg font-semibold text-foreground">
+        {
+          lang === "en"
+            ? "Kubernetes integration"
+            : "Integración con Kubernetes"
+        }
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              When a{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ConfigMap
+              </code>{" "}
+              is mounted as a volume, kubelet updates the file inside the pod
+              every time the{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ConfigMap
+              </code>{" "}
+              changes — without restarting the container.{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                fileSource
+              </code>{" "}
+              watches that file (
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                watch
+              </code>{" "}
+              is{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                true
+              </code>{" "}
+              by default) and publishes the new value on the{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Store
+              </code>
+              , so the rest of the app reacts to the change right away.
+            </>
+          ) : (
+            <>
+              Cuando un{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ConfigMap
+              </code>{" "}
+              se monta como volumen, kubelet actualiza el archivo en el pod cada
+              vez que el{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                ConfigMap
+              </code>{" "}
+              cambia — sin reiniciar el contenedor.{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                fileSource
+              </code>{" "}
+              observa ese archivo (
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                watch
+              </code>{" "}
+              es{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                true
+              </code>{" "}
+              por defecto) y publica el nuevo valor en el{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Store
+              </code>
+              , así que el resto de la app reacciona al cambio de inmediato.
+            </>
+          )
+        }
+      </p>
+
+      <div
+        class="ide overflow-hidden rounded-md border border-border"
+        role="radiogroup"
+        aria-label={lang === "en"
+          ? "Example: server.ts, configmap.yaml or deployment.yaml"
+          : "Ejemplo: server.ts, configmap.yaml o deployment.yaml"}
+      >
+        <input
+          type="radio"
+          id="ide3-tab-server"
+          name="ide3-tab"
+          class="ide-input"
+          checked
+        />
+        <input
+          type="radio"
+          id="ide3-tab-cm"
+          name="ide3-tab"
+          class="ide-input"
+        />
+        <input
+          type="radio"
+          id="ide3-tab-deploy"
+          name="ide3-tab"
+          class="ide-input"
+        />
+
+        <div
+          class="ide-titlebar flex items-center gap-1.5 px-3 py-2"
+          aria-hidden="true"
+        >
+          <span class="size-2.5 rounded-full bg-[#ff5f56]"></span>
+          <span class="size-2.5 rounded-full bg-[#ffbd2e]"></span>
+          <span class="size-2.5 rounded-full bg-[#27c93f]"></span>
+        </div>
+
+        <div class="ide-tabs-row flex text-xs">
+          <label
+            for="ide3-tab-server"
+            class="ide-tab"
+            data-tab="server"
+            aria-controls="ide3-panel-server"
+          >
+            <span class="ide-tab-dot bg-[#3178c6]" aria-hidden="true"></span>
+            server.ts
+          </label>
+          <label
+            for="ide3-tab-cm"
+            class="ide-tab"
+            data-tab="cm"
+            aria-controls="ide3-panel-cm"
+          >
+            <span class="ide-tab-dot bg-[#cb171e]" aria-hidden="true"></span>
+            configmap.yaml
+          </label>
+          <label
+            for="ide3-tab-deploy"
+            class="ide-tab"
+            data-tab="deploy"
+            aria-controls="ide3-panel-deploy"
+          >
+            <span class="ide-tab-dot bg-[#326ce5]" aria-hidden="true"></span>
+            deployment.yaml
+          </label>
+        </div>
+
+        <div
+          id="ide3-panel-server"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="server"
+        >
+          <Code code={k8sServerExample} lang="ts" theme="github-dark" />
+        </div>
+        <div
+          id="ide3-panel-cm"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="cm"
+        >
+          <Code code={configMapExample} lang="yaml" theme="github-dark" />
+        </div>
+        <div
+          id="ide3-panel-deploy"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="deploy"
+        >
+          <Code code={deploymentExample} lang="yaml" theme="github-dark" />
+        </div>
+      </div>
+    </section>
+
+    <section id="cerrando" class="flex flex-col gap-3">
+      <h2 class="text-lg font-semibold text-foreground">
+        {
+          lang === "en"
+            ? "Closing a config tree"
+            : "Cerrando un árbol de config"
+        }
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                configs.create(...)
+              </code>{" "}
+              exposes{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                close()
+              </code>
+              , which closes every source behind it (for{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                sseSource
+              </code>
+              , this aborts the live connection). It also implements{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Symbol.asyncDispose
+              </code>
+              , so{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                await using
+              </code>{" "}
+              closes it automatically at the end of the scope.
+            </>
+          ) : (
+            <>
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                configs.create(...)
+              </code>{" "}
+              expone{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                close()
+              </code>
+              , que cierra cada source detrás (para{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                sseSource
+              </code>
+              , esto aborta la conexión en vivo). También implementa{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                Symbol.asyncDispose
+              </code>
+              , así que{" "}
+              <code class="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                await using
+              </code>{" "}
+              lo cierra automáticamente al salir del scope.
+            </>
+          )
+        }
+      </p>
+      <div
+        class="overflow-x-auto rounded-md border border-border text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:px-4 [&_pre]:py-3"
+      >
+        <Code code={closingExample} lang="ts" theme="github-dark" />
+      </div>
+    </section>
+  </main>
+
+  <Footer lang={lang} />
+</DefaultLayout>
