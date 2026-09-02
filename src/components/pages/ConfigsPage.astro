@@ -635,6 +635,104 @@ Content-Type: application/json
   }
 }`;
 
+const googleAuthTsExampleEs = `import { create } from "@jondotsoy/configs";
+import { fetchSource } from "@jondotsoy/configs/sources/fetch";
+import { decodeProtectedHeader, importJWK, jwtVerify } from "jose";
+import { Temporal } from "temporal-polyfill";
+
+const cfg = await create(
+  {
+    keys: { type: "array", required: true },
+  },
+  {
+    sources: [
+      fetchSource({
+        url: "https://www.googleapis.com/oauth2/v3/certs",
+        // La respuesta de Google solo trae "keys"; nos quedamos con ese subárbol.
+        treePath: ["keys"],
+        // Google rota estas claves cada pocas horas — el polling las mantiene al día.
+        pollingInterval: Temporal.Duration.from({ hours: 1 }).total("milliseconds"),
+      }),
+    ],
+  },
+);
+
+export async function verifyGoogleIdToken(idToken: string) {
+  const { kid, alg } = decodeProtectedHeader(idToken);
+  const jwk = cfg.keys.get()!.find((key) => key.kid === kid);
+  const key = await importJWK(jwk, alg);
+
+  const { payload } = await jwtVerify(idToken, key, {
+    issuer: "https://accounts.google.com",
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  return payload;
+}`;
+
+const googleAuthTsExampleEn = `import { create } from "@jondotsoy/configs";
+import { fetchSource } from "@jondotsoy/configs/sources/fetch";
+import { decodeProtectedHeader, importJWK, jwtVerify } from "jose";
+import { Temporal } from "temporal-polyfill";
+
+const cfg = await create(
+  {
+    keys: { type: "array", required: true },
+  },
+  {
+    sources: [
+      fetchSource({
+        url: "https://www.googleapis.com/oauth2/v3/certs",
+        // Google's response only has "keys" — keep just that subtree.
+        treePath: ["keys"],
+        // Google rotates these keys every few hours — polling keeps them fresh.
+        pollingInterval: Temporal.Duration.from({ hours: 1 }).total("milliseconds"),
+      }),
+    ],
+  },
+);
+
+export async function verifyGoogleIdToken(idToken: string) {
+  const { kid, alg } = decodeProtectedHeader(idToken);
+  const jwk = cfg.keys.get()!.find((key) => key.kid === kid);
+  const key = await importJWK(jwk, alg);
+
+  const { payload } = await jwtVerify(idToken, key, {
+    issuer: "https://accounts.google.com",
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  return payload;
+}`;
+
+const googleAuthTsExample =
+  lang === "en" ? googleAuthTsExampleEn : googleAuthTsExampleEs;
+
+const googleJwksExample = `HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+Cache-Control: public, max-age=21600, must-revalidate, no-transform
+
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "e": "AQAB",
+      "use": "sig",
+      "kid": "f0f9f4a3c2b1d0e5a6b7c8d9e0f1a2b3c4d5e6f7",
+      "alg": "RS256",
+      "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXOshU..."
+    },
+    {
+      "kty": "RSA",
+      "e": "AQAB",
+      "use": "sig",
+      "kid": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      "alg": "RS256",
+      "n": "yGkzX3vRJvQvR5xz4C1QYr8bK2dLxN6mFwZtJq..."
+    }
+  ]
+}`;
+
 const configMapExample = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1243,6 +1341,89 @@ const homeHref = lang === "en" ? "/en" : "/";
           <Code code={featuresJsonExample} lang="http" theme="github-dark" />
         </div>
       </div>
+
+      <p class="text-sm text-muted-foreground">
+        {
+          lang === "en" ? (
+            <>
+              Or verifying Google-issued JWTs by keeping Google's rotating
+              public keys (JWKS) always fresh:
+            </>
+          ) : (
+            <>
+              O verificando JWTs emitidos por Google manteniendo siempre al día
+              sus claves públicas rotativas (JWKS):
+            </>
+          )
+        }
+      </p>
+
+      <div
+        class="ide overflow-hidden rounded-md border border-border"
+        role="radiogroup"
+        aria-label={lang === "en"
+          ? "Example: auth.ts or Google's JWKS endpoint"
+          : "Ejemplo: auth.ts o el endpoint JWKS de Google"}
+      >
+        <input
+          type="radio"
+          id="ide4-tab-auth"
+          name="ide4-tab"
+          class="ide-input"
+          checked
+        />
+        <input
+          type="radio"
+          id="ide4-tab-jwks"
+          name="ide4-tab"
+          class="ide-input"
+        />
+
+        <div
+          class="ide-titlebar flex items-center gap-1.5 px-3 py-2"
+          aria-hidden="true"
+        >
+          <span class="size-2.5 rounded-full bg-[#ff5f56]"></span>
+          <span class="size-2.5 rounded-full bg-[#ffbd2e]"></span>
+          <span class="size-2.5 rounded-full bg-[#27c93f]"></span>
+        </div>
+
+        <div class="ide-tabs-row flex text-xs">
+          <label
+            for="ide4-tab-auth"
+            class="ide-tab"
+            data-tab="auth"
+            aria-controls="ide4-panel-auth"
+          >
+            <span class="ide-tab-dot bg-[#3178c6]" aria-hidden="true"></span>
+            auth.ts
+          </label>
+          <label
+            for="ide4-tab-jwks"
+            class="ide-tab"
+            data-tab="jwks"
+            aria-controls="ide4-panel-jwks"
+          >
+            <span class="ide-tab-dot bg-[#f1e05a]" aria-hidden="true"></span>
+            www.googleapis.com/oauth2/v3/certs
+          </label>
+        </div>
+
+        <div
+          id="ide4-panel-auth"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="auth"
+        >
+          <Code code={googleAuthTsExample} lang="ts" theme="github-dark" />
+        </div>
+        <div
+          id="ide4-panel-jwks"
+          class="ide-panel text-xs leading-relaxed [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:px-4 [&_pre]:py-3"
+          data-panel="jwks"
+        >
+          <Code code={googleJwksExample} lang="http" theme="github-dark" />
+        </div>
+      </div>
     </section>
 
     <style>
@@ -1293,7 +1474,9 @@ const homeHref = lang === "en" ? "/en" : "/";
       #ide2-tab-remote:checked ~ .ide-tabs-row [data-tab="remote"],
       #ide3-tab-server:checked ~ .ide-tabs-row [data-tab="server"],
       #ide3-tab-cm:checked ~ .ide-tabs-row [data-tab="cm"],
-      #ide3-tab-deploy:checked ~ .ide-tabs-row [data-tab="deploy"] {
+      #ide3-tab-deploy:checked ~ .ide-tabs-row [data-tab="deploy"],
+      #ide4-tab-auth:checked ~ .ide-tabs-row [data-tab="auth"],
+      #ide4-tab-jwks:checked ~ .ide-tabs-row [data-tab="jwks"] {
         border-bottom-color: #58a6ff;
         color: rgb(255 255 255 / 92%);
       }
@@ -1304,7 +1487,9 @@ const homeHref = lang === "en" ? "/en" : "/";
       #ide2-tab-remote:checked ~ .ide-panel[data-panel="remote"],
       #ide3-tab-server:checked ~ .ide-panel[data-panel="server"],
       #ide3-tab-cm:checked ~ .ide-panel[data-panel="cm"],
-      #ide3-tab-deploy:checked ~ .ide-panel[data-panel="deploy"] {
+      #ide3-tab-deploy:checked ~ .ide-panel[data-panel="deploy"],
+      #ide4-tab-auth:checked ~ .ide-panel[data-panel="auth"],
+      #ide4-tab-jwks:checked ~ .ide-panel[data-panel="jwks"] {
         display: block;
       }
     </style>
