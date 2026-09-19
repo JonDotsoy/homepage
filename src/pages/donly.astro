@@ -1,0 +1,259 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import { Package, Terminal, Code2, Puzzle, ExternalLink } from "lucide-react";
+
+const npmUrl = "https://www.npmjs.com/package/donly";
+const vscodeUrl =
+  "https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate";
+const githubUrl = "https://github.com/JonDotsoy/don";
+---
+
+<DefaultLayout
+  title="donly — Guía rápida de DON (Directive Object Notation)"
+  description="Guía rápida para instalar y usar donly: cómo escribir DON (Directive Object Notation), sintaxis básica, comandos CLI y cómo instalar el resaltado de sintaxis en tu editor."
+  lang="es"
+>
+  <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
+    <header class="flex flex-col gap-4">
+      <span
+        class="inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground"
+      >
+        Guía rápida
+      </span>
+      <h1 class="text-3xl font-semibold text-foreground sm:text-4xl">donly</h1>
+      <p class="text-base text-muted-foreground">
+        <span class="font-medium text-foreground">donly</span> es la implementación
+        de referencia de <span class="font-medium text-foreground"
+          >DON (Directive Object Notation)</span
+        >, un formato de serialización de datos legible por humanos basado en
+        directivas y subdirectivas. Ideal para archivos de configuración,
+        definiciones de infraestructura y datos estructurados.
+      </p>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a
+          href={npmUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Package className="size-4" />
+          npm: donly
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+        <a
+          href={vscodeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Puzzle className="size-4" />
+          Extensión de VS Code
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+        <a
+          href={githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Code2 className="size-4" />
+          Código fuente
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+      </div>
+    </header>
+
+    <!-- Instalación -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Terminal className="size-5" />
+        Instalación
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Agrega <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >donly</code
+        > a tu proyecto con tu gestor de paquetes favorito.
+      </p>
+      <pre
+        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>npm install donly
+# o
+bun add donly
+# o
+pnpm add donly</code></pre>
+    </section>
+
+    <!-- Uso básico -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Code2 className="size-5" />
+        Uso básico
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Importa <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >DON</code
+        > y parsea un texto en formato DON para obtener un árbol de directivas.
+      </p>
+      <pre
+        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`import { DON } from "donly";
+
+const text = \`
+name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}
+\`;
+
+const root = DON.parse(text);`}</code></pre>
+      <p class="text-sm text-muted-foreground">
+        También puedes serializar directivas a JSON y decodificarlas de vuelta:
+      </p>
+      <pre
+        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`import { DirectiveJSONEncoder, DirectiveJSONDecoder } from "donly/decoder";
+
+const encoded = DirectiveJSONEncoder.encode(root);
+const decoded = new DirectiveJSONDecoder().decode(encoded);`}</code></pre>
+    </section>
+
+    <!-- Sintaxis básica -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Code2 className="size-5" />
+        Sintaxis básica
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        DON organiza los datos en <span class="text-foreground font-medium"
+          >directivas</span
+        >: un nombre seguido de argumentos posicionales y, opcionalmente, un
+        bloque <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >{"{ }"}</code
+        > con subdirectivas anidadas.
+      </p>
+      <pre
+        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`route GET /api {
+  respond 200 "Ok"
+}`}</code></pre>
+
+      <ul class="flex flex-col gap-2 text-sm text-muted-foreground">
+        <li>
+          <span class="font-medium text-foreground">Tipos de datos:</span> keywords,
+          strings, números, booleanos y <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground">null</code
+          >.
+        </li>
+        <li>
+          <span class="font-medium text-foreground">Comentarios:</span> de línea
+          con <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >#</code
+          > y de bloque con <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"/* ... */"}</code
+          >.
+        </li>
+        <li>
+          <span class="font-medium text-foreground">Heredocs:</span> soporte para
+          bloques de contenido multilínea embebido.
+        </li>
+        <li>
+          <span class="font-medium text-foreground">Anidamiento:</span> las directivas
+          pueden anidarse a cualquier profundidad dentro de bloques
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"{ }"}</code
+          >.
+        </li>
+      </ul>
+    </section>
+
+    <!-- CLI -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Terminal className="size-5" />
+        CLI
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        El CLI de <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >donly</code
+        > permite inspeccionar y validar archivos <code
+          class="rounded bg-muted px-1.5 py-0.5 text-foreground">.donly</code
+        >.
+      </p>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">
+          Inspeccionar
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly inspect file.donly
+bunx donly inspect --strategy nested|tuple|raw file.donly</code></pre>
+      </div>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">Lint</p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly lint --rules rules.json file.donly
+bunx donly lint --rules rules.json -o json file.donly</code></pre>
+      </div>
+    </section>
+
+    <!-- Editor -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Puzzle className="size-5" />
+        Instalar en tu editor
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        La extensión <span class="font-medium text-foreground"
+          >DON TextMate Grammar</span
+        > agrega resaltado de sintaxis para archivos <code
+          class="rounded bg-muted px-1.5 py-0.5 text-foreground">.don</code
+        > y <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >.donly</code
+        >. Funciona en VS Code, Kiro, o cualquier editor que soporte gramáticas
+        TextMate.
+      </p>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">
+          Desde VS Code
+        </p>
+        <ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+          <li>
+            Abre <span class="font-medium text-foreground">Quick Open</span> con
+            <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+              >Ctrl+P</code
+            > (o <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+              >Cmd+P</code
+            > en macOS).
+          </li>
+          <li>Pega el siguiente comando y presiona Enter:</li>
+        </ol>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>ext install jondotsoy.don-textmate</code></pre>
+        <p class="text-sm text-muted-foreground">
+          También puedes buscar <span class="font-medium text-foreground"
+            >"DON TextMate"</span
+          > en el Marketplace de extensiones o instalarla directamente desde
+          <a
+            href={vscodeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+            >la página de la extensión</a
+          >.
+        </p>
+      </div>
+    </section>
+
+    <footer class="border-t border-border pt-8">
+      <p class="text-sm text-muted-foreground">
+        Más detalles, el sistema de plugins y la referencia completa en el
+        <a
+          href={githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >repositorio de GitHub</a
+        >.
+      </p>
+    </footer>
+  </main>
+</DefaultLayout>
