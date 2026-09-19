@@ -6,13 +6,63 @@ const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
   "https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate";
 const githubUrl = "https://github.com/JonDotsoy/don";
+
+const title = "donly — Guía rápida de DON (Directive Object Notation)";
+const description =
+  "Guía rápida de donly: instala el parser de DON (Directive Object Notation), aprende su sintaxis, los comandos CLI y cómo resaltarla en tu editor.";
+const keywords =
+  "donly, DON, Directive Object Notation, don-textmate, parser, configuración, CLI, VS Code, TypeScript";
+const pageUrl = new URL("/donly", Astro.site || Astro.url.origin).href;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  name: "donly",
+  description,
+  url: pageUrl,
+  codeRepository: githubUrl,
+  downloadUrl: npmUrl,
+  programmingLanguage: "TypeScript",
+  runtimePlatform: "Node.js",
+  applicationCategory: "DeveloperApplication",
+  author: {
+    "@type": "Person",
+    name: "Jonathan Delgado Zamorano",
+    url: "https://jon.soy",
+  },
+};
 ---
 
 <DefaultLayout
-  title="donly — Guía rápida de DON (Directive Object Notation)"
-  description="Guía rápida para instalar y usar donly: cómo escribir DON (Directive Object Notation), sintaxis básica, comandos CLI y cómo instalar el resaltado de sintaxis en tu editor."
+  title={title}
+  description={description}
+  keywords={keywords}
   lang="es"
 >
+  <Fragment slot="head">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:url" content={pageUrl} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={pageUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
+  </Fragment>
+
   <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
     <header class="flex flex-col gap-4">
       <span
