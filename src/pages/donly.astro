@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Copy,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { getImage, Image } from "astro:assets";
 import CoverPng from "@/assets/donly/cover/cover.png";
@@ -185,6 +186,63 @@ const jsonLd = {
   </Fragment>
 
   <BlogHeader />
+
+  <dialog
+    id="beta-reviewers-dialog"
+    class="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-border bg-card p-0 text-foreground shadow-lg backdrop:bg-black/50"
+    aria-labelledby="beta-reviewers-dialog-title"
+  >
+    <div class="flex flex-col gap-4 p-6">
+      <div class="flex items-start justify-between gap-4">
+        <span
+          class="inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground"
+        >
+          Beta pública
+        </span>
+        <button
+          id="beta-reviewers-dialog-close"
+          type="button"
+          aria-label="Cerrar"
+          class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <h2
+        id="beta-reviewers-dialog-title"
+        class="text-lg font-semibold text-foreground"
+      >
+        Buscando revisores para la v0.1.0
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Estoy por lanzar la <span class="font-medium text-foreground"
+          >versión 0.1.0</span
+        >, la primera beta pública de <span class="font-medium text-foreground"
+          >donly</span
+        >. Si usas DON o te interesa el proyecto, me encantaría que la revisaras
+        antes del lanzamiento: sintaxis, CLI, tipos, docs o cualquier detalle
+        que encuentres.
+      </p>
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a
+          href={`${githubUrl}/issues/new`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:opacity-90"
+        >
+          Quiero revisarla
+          <ExternalLink className="size-3.5 opacity-80" />
+        </a>
+        <button
+          id="beta-reviewers-dialog-dismiss"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          Ahora no
+        </button>
+      </div>
+    </div>
+  </dialog>
 
   <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
     <header class="flex flex-col gap-4">
@@ -661,6 +719,43 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
       pageMenu.open = false;
     }
   });
+
+  const betaDialog = document.getElementById(
+    "beta-reviewers-dialog",
+  ) as HTMLDialogElement | null;
+  const betaDialogStorageKey = "donly-beta-reviewers-dialog-dismissed";
+
+  const dismissBetaDialog = () => {
+    betaDialog?.close();
+    try {
+      localStorage.setItem(betaDialogStorageKey, "1");
+    } catch (error) {
+      console.error("Failed to persist beta dialog dismissal", error);
+    }
+  };
+
+  if (betaDialog) {
+    let alreadyDismissed = false;
+    try {
+      alreadyDismissed = localStorage.getItem(betaDialogStorageKey) === "1";
+    } catch (error) {
+      console.error("Failed to read beta dialog dismissal", error);
+    }
+    if (!alreadyDismissed) {
+      betaDialog.showModal();
+    }
+
+    document
+      .getElementById("beta-reviewers-dialog-close")
+      ?.addEventListener("click", dismissBetaDialog);
+    document
+      .getElementById("beta-reviewers-dialog-dismiss")
+      ?.addEventListener("click", dismissBetaDialog);
+    betaDialog.addEventListener("click", (event) => {
+      if (event.target === betaDialog) dismissBetaDialog();
+    });
+    betaDialog.querySelector("a")?.addEventListener("click", dismissBetaDialog);
+  }
 </script>
 
 <style>
