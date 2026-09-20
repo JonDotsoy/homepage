@@ -338,6 +338,40 @@ const jsonLd = {
       </div>
     </header>
 
+    <!-- Aviso: buscando revisores para v0.1.0 -->
+    <div
+      class="flex flex-col gap-4 rounded-lg border border-border bg-card p-6"
+    >
+      <span
+        class="inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground"
+      >
+        Beta pública
+      </span>
+      <h2 class="text-lg font-semibold text-foreground">
+        Buscando revisores para la v0.1.0
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Estoy por lanzar la <span class="font-medium text-foreground"
+          >versión 0.1.0</span
+        >, la primera beta pública de <span class="font-medium text-foreground"
+          >donly</span
+        >. Si usas DON o te interesa el proyecto, me encantaría que la revisaras
+        antes del lanzamiento: sintaxis, CLI, tipos, docs o cualquier detalle
+        que encuentres.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a
+          href={`${githubUrl}/issues/new`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:opacity-90"
+        >
+          Quiero revisarla
+          <ExternalLink className="size-3.5 opacity-80" />
+        </a>
+      </div>
+    </div>
+
     <!-- Instalación -->
     <section class="flex flex-col gap-4">
       <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
