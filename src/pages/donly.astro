@@ -3,6 +3,7 @@ import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import { Package, Terminal, Code2, Puzzle, ExternalLink } from "lucide-react";
 import { getImage } from "astro:assets";
 import CoverPng from "@/assets/donly/cover/cover.png";
+import { highlightDon } from "@/lib/highlight-don";
 
 const optimizedCover = await getImage({
   src: CoverPng,
@@ -14,6 +15,18 @@ const coverImageUrl = new URL(
   optimizedCover.src,
   Astro.site || Astro.url.origin,
 ).href;
+
+const routeExampleHtml = await highlightDon(`route GET /api {
+  respond 200 "Ok"
+}`);
+const inspectInputHtml = await highlightDon(`name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}`);
+const lintInputHtml = await highlightDon(`name "my-app"
+port "8080"`);
 
 const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
@@ -196,10 +209,10 @@ const decoded = new DirectiveJSONDecoder().decode(encoded);`}</code></pre>
           >{"{ }"}</code
         > con subdirectivas anidadas.
       </p>
-      <pre
-        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`route GET /api {
-  respond 200 "Ok"
-}`}</code></pre>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={routeExampleHtml}
+      />
 
       <ul class="flex flex-col gap-2 text-sm text-muted-foreground">
         <li>
@@ -257,13 +270,10 @@ bunx donly inspect --strategy nested|tuple|raw file.donly</code></pre>
             >file.donly</code
           > con:
         </p>
-        <pre
-          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`name "my-app"
-port 8080
-database {
-  host "localhost"
-  port 5432
-}`}</code></pre>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={inspectInputHtml}
+        />
         <p class="text-sm text-muted-foreground">
           <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >bunx donly inspect file.donly</code
@@ -304,9 +314,10 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
             >file.donly</code
           > que rompe esa regla:
         </p>
-        <pre
-          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`name "my-app"
-port "8080"`}</code></pre>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={lintInputHtml}
+        />
         <p class="text-sm text-muted-foreground">
           <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >bunx donly lint --rules rules.json file.donly</code
@@ -381,3 +392,11 @@ port "8080"`}</code></pre>
     </footer>
   </main>
 </DefaultLayout>
+
+<style>
+  /* Let the wrapper's bg-muted/50 show through Shiki's own background. */
+  .don-code :global(pre.shiki) {
+    margin: 0;
+    background-color: transparent !important;
+  }
+</style>
