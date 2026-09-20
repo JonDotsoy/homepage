@@ -1,6 +1,19 @@
 ---
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import { Package, Terminal, Code2, Puzzle, ExternalLink } from "lucide-react";
+import { getImage } from "astro:assets";
+import CoverPng from "@/assets/donly/cover/cover.png";
+
+const optimizedCover = await getImage({
+  src: CoverPng,
+  width: 1200,
+  height: 630,
+  format: "webp",
+});
+const coverImageUrl = new URL(
+  optimizedCover.src,
+  Astro.site || Astro.url.origin,
+).href;
 
 const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
@@ -45,12 +58,14 @@ const jsonLd = {
     <meta property="og:url" content={pageUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:image" content={coverImageUrl} />
 
     <!-- Twitter -->
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content={pageUrl} />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={coverImageUrl} />
 
     <!-- Canonical URL -->
     <link rel="canonical" href={pageUrl} />
