@@ -202,4 +202,4 @@ También puedes buscar "DON TextMate" en el Marketplace de extensiones o instala
 
 ---
 
-Más detalles, el sistema de plugins y la referencia completa en el repositorio de GitHub: https://github.com/JonDotsoy/don
+Más detalles, el sistema de plugins y la referencia completa en el repositorio de GitHub: https://github.com/JonDotsoy/don, incluyendo la documentación completa del formato de reglas de lint: https://github.com/JonDotsoy/don/blob/develop/docs/lint/rules.md

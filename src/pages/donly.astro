@@ -109,6 +109,8 @@ const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
   "https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate";
 const githubUrl = "https://github.com/JonDotsoy/don";
+const lintDocsUrl =
+  "https://github.com/JonDotsoy/don/blob/develop/docs/lint/rules.md";
 
 const title = "donly — Guía rápida de DON (Directive Object Notation)";
 const description =
@@ -571,6 +573,13 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
           rel="noopener noreferrer"
           class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
           >repositorio de GitHub</a
+        >, incluyendo la
+        <a
+          href={lintDocsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >documentación completa del formato de reglas de lint</a
         >.
       </p>
     </div>
