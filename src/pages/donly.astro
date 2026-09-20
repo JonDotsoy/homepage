@@ -46,10 +46,10 @@ port 8080
 */
 host "localhost"`);
 const heredocHtml = await highlightDon(`description <<<TEXT
-Este es un bloque de texto
-que puede ocupar varias líneas,
-sin escapar comillas ni saltos de línea.
-TEXT`);
+  Este es un bloque de texto
+  que puede ocupar varias líneas,
+  siempre que estén indentadas.
+name "my-app"`);
 const nestingHtml = await highlightDon(`server {
   route GET /health {
     respond 200 "Ok"
@@ -300,10 +300,11 @@ pnpm add donly</code></pre>
       <div class="flex flex-col gap-2">
         <p class="text-sm text-muted-foreground">
           <span class="font-medium text-foreground">Heredocs:</span> bloques de contenido
-          multilínea embebido, delimitados con <code
+          multilínea embebido que empiezan con <code
             class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >{"<<<DELIMITADOR"}</code
-          >.
+          > y terminan en la primera línea sin indentar; no se cierran repitiendo
+          el delimitador.
         </p>
         <div
           class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
