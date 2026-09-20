@@ -117,6 +117,9 @@ const lintDocsUrl =
 const title = "donly — Guía rápida de DON (Directive Object Notation)";
 const description =
   "Guía rápida de donly: instala el parser de DON (Directive Object Notation), aprende su sintaxis, los comandos CLI y cómo resaltarla en tu editor.";
+const ogDescription =
+  "Guía rápida de donly: parser de DON (Directive Object Notation), sintaxis, comandos CLI y resaltado en tu editor.";
+const siteName = "jon.soy";
 const keywords =
   "donly, DON, Directive Object Notation, don-textmate, parser, configuración, CLI, VS Code, TypeScript";
 const pageUrl = new URL("/donly", Astro.site || Astro.url.origin).href;
@@ -156,15 +159,16 @@ const jsonLd = {
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content={pageUrl} />
+    <meta property="og:site_name" content={siteName} />
     <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={ogDescription} />
     <meta property="og:image" content={coverImageUrl} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content={pageUrl} />
     <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:description" content={ogDescription} />
     <meta name="twitter:image" content={coverImageUrl} />
 
     <!-- Canonical URL -->
