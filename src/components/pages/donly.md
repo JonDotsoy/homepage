@@ -8,6 +8,26 @@ Guía rápida · MIT
 - Extensión de VS Code: https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate
 - GitHub: https://github.com/JonDotsoy/don
 
+## Demo
+
+Así luce un archivo `.donly` real: una directiva de aplicación con configuración anidada y una ruta HTTP.
+
+```don
+app "my-service" {
+  port 8080
+  debug true
+
+  database PostgreSQL {
+    host "localhost"
+    port 5432
+  }
+
+  healthCheck GET /health {
+    expect statusCode 200
+  }
+}
+```
+
 ## Instalación
 
 ```bash
