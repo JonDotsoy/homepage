@@ -109,6 +109,8 @@ const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
   "https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate";
 const githubUrl = "https://github.com/JonDotsoy/don";
+const syntaxDocsUrl =
+  "https://github.com/JonDotsoy/don/blob/develop/docs/specs/v1/spec.md";
 const lintDocsUrl =
   "https://github.com/JonDotsoy/don/blob/develop/docs/lint/rules.md";
 
@@ -574,6 +576,14 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
           class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
           >repositorio de GitHub</a
         >, incluyendo la
+        <a
+          href={syntaxDocsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >especificación completa de la sintaxis</a
+        >
+        y la
         <a
           href={lintDocsUrl}
           target="_blank"
