@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>donly</title>
+    <meta
+      name="description"
+      content="Cover para donly — la implementación de referencia de DON (Directive Object Notation)"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-1: #0d1117;
+        --bg-2: #141a22;
+        --accent: #ffa657;
+        --accent-2: #79c0ff;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --line: rgba(255, 255, 255, 0.09);
+        --code-bg: rgba(255, 255, 255, 0.035);
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg-1);
+        font-family: var(--sans);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-inline: 20px;
+        padding-block: 48px;
+      }
+
+      .stage {
+        width: 100%;
+        max-width: 1040px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .cover {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1200/630;
+        border-radius: 20px;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 520px at 90% -14%, rgba(255, 166, 87, 0.14), transparent 58%),
+          radial-gradient(760px 520px at -10% 114%, rgba(121, 192, 255, 0.14), transparent 58%),
+          linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+        border: 1px solid var(--line);
+        box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(20px, 4.6vw, 52px) clamp(24px, 7.5vw, 76px);
+      }
+
+      .grid-overlay {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 44px 44px;
+        -webkit-mask-image: radial-gradient(680px 480px at 22% 30%, black, transparent 72%);
+        mask-image: radial-gradient(680px 480px at 22% 30%, black, transparent 72%);
+        opacity: 0.5;
+      }
+
+      .top {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .title {
+        font-family: var(--mono);
+        font-size: clamp(36px, 7.6vw, 80px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        line-height: 1;
+      }
+      .title .dot {
+        color: var(--accent);
+      }
+
+      .subtitle {
+        margin-top: clamp(6px, 1.2vw, 12px);
+        font-size: clamp(14px, 2vw, 21px);
+        color: var(--muted);
+        letter-spacing: 0.01em;
+      }
+      .subtitle b {
+        color: var(--accent-2);
+        font-weight: 600;
+      }
+
+      .badges {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: clamp(12px, 1.7vw, 16px);
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        white-space: nowrap;
+      }
+      .pill .led {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent-2);
+        box-shadow: 0 0 8px 1px rgba(121, 192, 255, 0.6);
+      }
+
+      .examples {
+        position: relative;
+        margin-top: clamp(18px, 3.4vw, 32px);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: stretch;
+        gap: clamp(12px, 2.2vw, 20px);
+      }
+
+      .pane {
+        display: flex;
+        flex-direction: column;
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .pane .label {
+        font-family: var(--mono);
+        font-size: clamp(11px, 1.5vw, 14px);
+        letter-spacing: 0.09em;
+        color: var(--muted);
+        padding: clamp(10px, 1.6vw, 14px) clamp(16px, 2.6vw, 22px) 0;
+      }
+      .pane.json .label {
+        color: var(--accent-2);
+      }
+      .pane.don .label {
+        color: var(--accent);
+      }
+
+      .code {
+        font-family: var(--mono);
+        font-size: clamp(15px, 2.5vw, 25px);
+        line-height: 1.6;
+        color: var(--text);
+        padding: clamp(10px, 1.6vw, 14px) clamp(16px, 2.6vw, 22px) clamp(16px, 2.6vw, 22px);
+        overflow: hidden;
+      }
+      .code .ln {
+        display: block;
+        white-space: pre;
+      }
+      .code .directive {
+        color: var(--accent);
+      }
+      .code .arg {
+        color: var(--accent-2);
+      }
+      .code .str {
+        color: #a5d6a7;
+      }
+      .code .num {
+        color: #a5d6a7;
+      }
+      .code .key {
+        color: var(--accent-2);
+      }
+      .code .punct {
+        color: var(--muted);
+      }
+      .code .comment {
+        color: #5b6472;
+        font-style: italic;
+      }
+
+      .arrow {
+        align-self: center;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: clamp(20px, 3.6vw, 32px);
+        padding-inline: 2px;
+      }
+
+      @media (max-width: 620px) {
+        .examples {
+          grid-template-columns: 1fr;
+        }
+        .arrow {
+          display: none;
+        }
+      }
+
+      .footer {
+        position: relative;
+        margin-top: clamp(18px, 3.6vw, 30px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: clamp(11px, 1.8vw, 16px) clamp(16px, 2.8vw, 24px);
+        background: rgba(255, 255, 255, 0.045);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        font-family: var(--mono);
+        font-size: clamp(15px, 2.2vw, 22px);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .install .prompt {
+        color: var(--muted);
+      }
+
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: clamp(13px, 1.9vw, 19px);
+        font-family: var(--sans);
+        flex-wrap: wrap;
+      }
+      .meta .handle {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .dot-sep {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--accent-2);
+        flex-shrink: 0;
+      }
+
+      .hint {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: #6b7480;
+        text-align: center;
+      }
+
+      @media (max-width: 500px) {
+        .top {
+          flex-direction: column;
+        }
+        .badges {
+          align-items: flex-start;
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+        .footer {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="cover">
+        <div class="grid-overlay"></div>
+
+        <div class="top">
+          <div class="brand">
+            <div class="title">donly<span class="dot">.</span></div>
+            <div class="subtitle">
+              Una implementación de <b>DON</b> — Directive Object Notation
+            </div>
+          </div>
+          <div class="badges">
+            <span class="pill"><span class="led"></span>v0.0.25</span>
+            <span class="pill">MIT</span>
+          </div>
+        </div>
+
+        <div class="examples">
+          <div class="pane don">
+            <span class="label">DON</span>
+            <div class="code" aria-label="Ejemplo de sintaxis DON">
+              <span class="ln"><span class="directive">route</span> <span class="arg">GET</span> <span class="arg">/api</span> <span class="punct">{</span></span>
+              <span class="ln">  <span class="directive">respond</span> <span class="arg">200</span> <span class="str">"Ok"</span></span>
+              <span class="ln"><span class="punct">}</span></span>
+            </div>
+          </div>
+
+          <span class="arrow">&rarr;</span>
+
+          <div class="pane json">
+            <span class="label">JSON</span>
+            <div class="code" aria-label="Representación equivalente en JSON anidado">
+              <span class="ln"><span class="punct">{</span><span class="key">"route"</span><span class="punct">: {</span><span class="key">"GET"</span><span class="punct">: {</span><span class="key">"/api"</span><span class="punct">: {</span></span>
+              <span class="ln">    <span class="key">"respond"</span><span class="punct">: {</span></span>
+              <span class="ln">      <span class="key">"200"</span><span class="punct">:</span> <span class="str">"Ok"</span></span>
+              <span class="ln">    <span class="punct">}</span></span>
+              <span class="ln"><span class="punct">}}}}</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="install"><span class="prompt">$</span>&nbsp;npm i donly</div>
+          <div class="meta">
+            <span class="handle">jondotsoy</span>
+            <span class="dot-sep"></span>
+            <span>don.jon.soy</span>
+            <span class="dot-sep"></span>
+            <span>github.com/jondotsoy/don</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="hint">Cover 1200×630 — se ve completo a cualquier ancho</p>
+    </div>
+  </body>
+</html>
