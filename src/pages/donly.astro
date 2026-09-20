@@ -41,6 +41,20 @@ database {
 const lintInputHtml = await highlightDon(`name "my-app"
 port "8080"`);
 
+const demoHtml = await highlightDon(`app "my-service" {
+  port 8080
+  debug true
+
+  database {
+    host "localhost"
+    port 5432
+  }
+
+  route GET /health {
+    respond 200 "Ok"
+  }
+}`);
+
 const dataTypesHtml = await highlightDon(`name "donly"
 port 8080
 price 19.99
@@ -371,6 +385,24 @@ const jsonLd = {
         </a>
       </div>
     </div>
+
+    <!-- Demo -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Code2 className="size-5" />
+        Demo
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Así luce un archivo <code
+          class="rounded bg-muted px-1.5 py-0.5 text-foreground">.donly</code
+        > real: una directiva de aplicación con configuración anidada y una ruta
+        HTTP.
+      </p>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={demoHtml}
+      />
+    </section>
 
     <!-- Instalación -->
     <section class="flex flex-col gap-4">
