@@ -251,6 +251,33 @@ const decoded = new DirectiveJSONDecoder().decode(encoded);`}</code></pre>
         <pre
           class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly inspect file.donly
 bunx donly inspect --strategy nested|tuple|raw file.donly</code></pre>
+        <p class="text-sm text-muted-foreground">
+          Por ejemplo, para un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >file.donly</code
+          > con:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}`}</code></pre>
+        <p class="text-sm text-muted-foreground">
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >bunx donly inspect file.donly</code
+          > imprime:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`{
+  "name": "my-app",
+  "port": 8080,
+  "database": {
+    "host": "localhost",
+    "port": 5432
+  }
+}`}</code></pre>
       </div>
       <div class="flex flex-col gap-2">
         <p class="text-xs font-medium text-muted-foreground uppercase">Lint</p>
