@@ -13,6 +13,8 @@ import { getImage } from "astro:assets";
 import CoverPng from "@/assets/donly/cover/cover.png";
 import { highlightDon, highlightJson, highlightJs } from "@/lib/highlight-code";
 import pageMarkdown from "@/components/pages/donly.md?raw";
+import BlogHeader from "@/components/blog-header.astro";
+import Footer from "@/sections/footer.astro";
 
 const optimizedCover = await getImage({
   src: CoverPng,
@@ -168,6 +170,8 @@ const jsonLd = {
       set:html={JSON.stringify(jsonLd)}
     />
   </Fragment>
+
+  <BlogHeader />
 
   <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
     <header class="flex flex-col gap-4">
@@ -554,7 +558,7 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
       </div>
     </section>
 
-    <footer class="border-t border-border pt-8">
+    <div class="border-t border-border pt-8">
       <p class="text-sm text-muted-foreground">
         Más detalles, el sistema de plugins y la referencia completa en el
         <a
@@ -565,10 +569,12 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
           >repositorio de GitHub</a
         >.
       </p>
-    </footer>
+    </div>
 
     <div id="page-markdown-source" class="hidden" set:text={pageMarkdown} />
   </main>
+
+  <Footer lang="es" />
 </DefaultLayout>
 
 <script>
