@@ -28,6 +28,37 @@ database {
 const lintInputHtml = await highlightDon(`name "my-app"
 port "8080"`);
 
+const dataTypesHtml = await highlightDon(`name "donly"
+port 8080
+price 19.99
+retries -1
+big 9007199254740993n
+mask 0xFF
+enabled true
+disabled false
+description null`);
+const commentsHtml = await highlightDon(`# Puerto donde escucha el servidor HTTP
+port 8080
+
+/*
+  Bloque de comentario
+  de varias líneas
+*/
+host "localhost"`);
+const heredocHtml = await highlightDon(`description <<<TEXT
+Este es un bloque de texto
+que puede ocupar varias líneas,
+sin escapar comillas ni saltos de línea.
+TEXT`);
+const nestingHtml = await highlightDon(`server {
+  route GET /health {
+    respond 200 "Ok"
+  }
+  route POST /users {
+    respond 201 "Created"
+  }
+}`);
+
 const parseUsageHtml = await highlightJs(`import { DON } from "donly";
 
 const text = \`
@@ -236,14 +267,22 @@ pnpm add donly</code></pre>
         set:html={routeExampleHtml}
       />
 
-      <ul class="flex flex-col gap-2 text-sm text-muted-foreground">
-        <li>
-          <span class="font-medium text-foreground">Tipos de datos:</span> keywords,
-          strings, números, booleanos y <code
-            class="rounded bg-muted px-1.5 py-0.5 text-foreground">null</code
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Tipos de datos:</span>
+          strings, números (enteros, decimales, hex, bigint), booleanos y
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >null</code
           >.
-        </li>
-        <li>
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={dataTypesHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
           <span class="font-medium text-foreground">Comentarios:</span> de línea
           con <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >#</code
@@ -251,19 +290,40 @@ pnpm add donly</code></pre>
             class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >{"/* ... */"}</code
           >.
-        </li>
-        <li>
-          <span class="font-medium text-foreground">Heredocs:</span> soporte para
-          bloques de contenido multilínea embebido.
-        </li>
-        <li>
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={commentsHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Heredocs:</span> bloques de contenido
+          multilínea embebido, delimitados con <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"<<<DELIMITADOR"}</code
+          >.
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={heredocHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
           <span class="font-medium text-foreground">Anidamiento:</span> las directivas
           pueden anidarse a cualquier profundidad dentro de bloques
           <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
             >{"{ }"}</code
           >.
-        </li>
-      </ul>
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={nestingHtml}
+        />
+      </div>
     </section>
 
     <!-- CLI -->
