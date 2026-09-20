@@ -3,7 +3,7 @@ import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import { Package, Terminal, Code2, Puzzle, ExternalLink } from "lucide-react";
 import { getImage } from "astro:assets";
 import CoverPng from "@/assets/donly/cover/cover.png";
-import { highlightDon } from "@/lib/highlight-don";
+import { highlightDon, highlightJson, highlightJs } from "@/lib/highlight-code";
 
 const optimizedCover = await getImage({
   src: CoverPng,
@@ -27,6 +27,38 @@ database {
 }`);
 const lintInputHtml = await highlightDon(`name "my-app"
 port "8080"`);
+
+const parseUsageHtml = await highlightJs(`import { DON } from "donly";
+
+const text = \`
+name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}
+\`;
+
+const root = DON.parse(text);`);
+const jsonCodecUsageHtml = await highlightJs(
+  `import { DirectiveJSONEncoder, DirectiveJSONDecoder } from "donly/decoder";
+
+const encoded = DirectiveJSONEncoder.encode(root);
+const decoded = new DirectiveJSONDecoder().decode(encoded);`,
+);
+const inspectOutputHtml = await highlightJson(`{
+  "name": "my-app",
+  "port": 8080,
+  "database": {
+    "host": "localhost",
+    "port": 5432
+  }
+}`);
+const lintRulesHtml = await highlightJson(`{
+  "rules": [
+    { "directive": "port", "require": "number" }
+  ]
+}`);
 
 const npmUrl = "https://www.npmjs.com/package/donly";
 const vscodeUrl =
@@ -172,27 +204,17 @@ pnpm add donly</code></pre>
           >DON</code
         > y parsea un texto en formato DON para obtener un árbol de directivas.
       </p>
-      <pre
-        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`import { DON } from "donly";
-
-const text = \`
-name "my-app"
-port 8080
-database {
-  host "localhost"
-  port 5432
-}
-\`;
-
-const root = DON.parse(text);`}</code></pre>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={parseUsageHtml}
+      />
       <p class="text-sm text-muted-foreground">
         También puedes serializar directivas a JSON y decodificarlas de vuelta:
       </p>
-      <pre
-        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`import { DirectiveJSONEncoder, DirectiveJSONDecoder } from "donly/decoder";
-
-const encoded = DirectiveJSONEncoder.encode(root);
-const decoded = new DirectiveJSONDecoder().decode(encoded);`}</code></pre>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={jsonCodecUsageHtml}
+      />
     </section>
 
     <!-- Sintaxis básica -->
@@ -279,15 +301,10 @@ bunx donly inspect --strategy nested|tuple|raw file.donly</code></pre>
             >bunx donly inspect file.donly</code
           > imprime:
         </p>
-        <pre
-          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`{
-  "name": "my-app",
-  "port": 8080,
-  "database": {
-    "host": "localhost",
-    "port": 5432
-  }
-}`}</code></pre>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={inspectOutputHtml}
+        />
       </div>
       <div class="flex flex-col gap-2">
         <p class="text-xs font-medium text-muted-foreground uppercase">Lint</p>
@@ -302,12 +319,10 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
             class="rounded bg-muted px-1.5 py-0.5 text-foreground">port</code
           > sea numérico:
         </p>
-        <pre
-          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`{
-  "rules": [
-    { "directive": "port", "require": "number" }
-  ]
-}`}</code></pre>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={lintRulesHtml}
+        />
         <p class="text-sm text-muted-foreground">
           Al lintear un <code
             class="rounded bg-muted px-1.5 py-0.5 text-foreground"
