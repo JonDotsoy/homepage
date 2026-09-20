@@ -9,8 +9,10 @@ import {
   Copy,
   ChevronDown,
 } from "lucide-react";
-import { getImage } from "astro:assets";
+import { getImage, Image } from "astro:assets";
 import CoverPng from "@/assets/donly/cover/cover.png";
+import BrandLogoLight from "@/assets/donly/brand/logo-light.png";
+import BrandLogoDark from "@/assets/donly/brand/logo-dark.png";
 import { highlightDon, highlightJson, highlightJs } from "@/lib/highlight-code";
 import pageMarkdown from "@/components/pages/donly.md?raw";
 import BlogHeader from "@/components/blog-header.astro";
@@ -276,7 +278,23 @@ const jsonLd = {
           </details>
         </div>
       </div>
-      <h1 class="text-3xl font-semibold text-foreground sm:text-4xl">donly</h1>
+      <h1 class="flex items-center">
+        <span class="sr-only">donly</span>
+        <Image
+          src={BrandLogoLight}
+          alt="donly"
+          class="block h-10 w-auto dark:hidden sm:h-12"
+          width={369}
+          height={113}
+        />
+        <Image
+          src={BrandLogoDark}
+          alt="donly"
+          class="hidden h-10 w-auto dark:block sm:h-12"
+          width={369}
+          height={113}
+        />
+      </h1>
       <p class="text-base text-muted-foreground">
         <span class="font-medium text-foreground">donly</span> es la implementación
         de referencia de <span class="font-medium text-foreground"
