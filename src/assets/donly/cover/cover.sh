@@ -8,14 +8,14 @@ REPO_ROOT="$(cd "$DIR/../../../.." && pwd)"
 
 cd "$REPO_ROOT"
 
-node --input-type=module - "$DIR/cover.html" "$DIR/cover.png" <<'EOF'
+node --input-type=module - "$DIR/cover.html" "$DIR/cover.png" "$DIR/cover.info.json" <<'EOF'
 import { chromium } from "playwright";
 import sharp from "sharp";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import { writeFile, stat } from "node:fs/promises";
 
-const [, , htmlPath, outPath] = process.argv;
+const [, , htmlPath, outPath, infoPath] = process.argv;
 const WIDTH = 1200;
 const HEIGHT = 630;
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -72,10 +72,24 @@ try {
   }
 
   await writeFile(outPath, optimized);
+
+  const metadata = await sharp(optimized).metadata();
+  const { size: bytes } = await stat(outPath);
+  const info = {
+    width: metadata.width,
+    height: metadata.height,
+    format: metadata.format,
+    size: {
+      bytes,
+      megabytes: Number((bytes / 1024 / 1024).toFixed(3)),
+      gigabytes: Number((bytes / 1024 / 1024 / 1024).toFixed(6)),
+    },
+  };
+  await writeFile(infoPath, `${JSON.stringify(info, null, 2)}\n`);
+
+  console.log(`Wrote ${outPath} (${(bytes / 1024).toFixed(1)} KB)`);
+  console.log(`Wrote ${infoPath}`);
 } finally {
   await browser.close();
 }
-
-const { size } = await stat(outPath);
-console.log(`Wrote ${outPath} (${(size / 1024).toFixed(1)} KB)`);
 EOF
