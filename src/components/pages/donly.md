@@ -160,7 +160,12 @@ Por ejemplo, con un `rules.json` que exige que `port` sea numérico:
 
 ```json
 {
-  "rules": [{ "directive": "port", "require": "number" }]
+  "/port": {
+    "[1]": {
+      "type": "number",
+      "message": "port debe ser un número"
+    }
+  }
 }
 ```
 
@@ -174,9 +179,10 @@ port "8080"
 `bunx donly lint --rules rules.json file.donly` imprime:
 
 ```
-✖ file.donly:2:6  port expects a number, got string  (port-must-be-number)
+file.donly
+  2:6  error  port debe ser un número
 
-1 problem (1 error, 0 warnings)
+1 error 0 warnings 0 info
 ```
 
 ## Instalar en tu editor

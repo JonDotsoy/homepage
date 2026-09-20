@@ -97,9 +97,12 @@ const inspectOutputHtml = await highlightJson(`{
   }
 }`);
 const lintRulesHtml = await highlightJson(`{
-  "rules": [
-    { "directive": "port", "require": "number" }
-  ]
+  "/port": {
+    "[1]": {
+      "type": "number",
+      "message": "port debe ser un número"
+    }
+  }
 }`);
 
 const npmUrl = "https://www.npmjs.com/package/donly";
@@ -504,9 +507,10 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
           > imprime:
         </p>
         <pre
-          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`✖ file.donly:2:6  port expects a number, got string  (port-must-be-number)
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`file.donly
+  2:6  error  port debe ser un número
 
-1 problem (1 error, 0 warnings)`}</code></pre>
+1 error 0 warnings 0 info`}</code></pre>
       </div>
     </section>
 
