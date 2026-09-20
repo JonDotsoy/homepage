@@ -146,11 +146,35 @@
         box-shadow: 0 0 8px 1px rgba(121, 192, 255, 0.6);
       }
 
-      .pill.cta {
+      .badges {
+        align-items: flex-end;
+      }
+
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: clamp(12px, 2vw, 18px) clamp(20px, 3.2vw, 28px);
+        border-radius: 14px;
         background: var(--accent);
-        border-color: var(--accent);
         color: var(--bg-1);
-        font-weight: 700;
+        font-family: var(--mono);
+        font-weight: 800;
+        font-size: clamp(18px, 2.8vw, 26px);
+        white-space: nowrap;
+        box-shadow: 0 14px 30px -10px rgba(255, 166, 87, 0.55);
+      }
+      .cta .arrow-icon {
+        font-size: 1.15em;
+      }
+
+      .secondary-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: clamp(12px, 1.5vw, 15px);
+        color: var(--muted);
       }
 
       .examples {
@@ -321,9 +345,11 @@
             </div>
           </div>
           <div class="badges">
-            <span class="pill cta">&rarr; Lee la guía</span>
-            <span class="pill"><span class="led"></span>v0.0.25</span>
-            <span class="pill">MIT</span>
+            <span class="cta"><span class="arrow-icon">&rarr;</span> Lee la guía</span>
+            <div class="secondary-badges">
+              <span class="pill"><span class="led"></span>v0.0.25</span>
+              <span class="pill">MIT</span>
+            </div>
           </div>
         </div>
 
