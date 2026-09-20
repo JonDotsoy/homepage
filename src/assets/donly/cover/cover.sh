@@ -81,6 +81,7 @@ try {
     format: metadata.format,
     size: {
       bytes,
+      kilobytes: Number((bytes / 1024).toFixed(2)),
       megabytes: Number((bytes / 1024 / 1024).toFixed(3)),
       gigabytes: Number((bytes / 1024 / 1024 / 1024).toFixed(6)),
     },
