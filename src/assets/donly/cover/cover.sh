@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Renders cover.html into cover.png (1200x630) using Playwright's Chromium.
+# Renders cover.html into cover.png (1200x630) using Playwright's Chromium,
+# then optimizes it with sharp so the file stays under 2MB.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,12 +10,15 @@ cd "$REPO_ROOT"
 
 node --input-type=module - "$DIR/cover.html" "$DIR/cover.png" <<'EOF'
 import { chromium } from "playwright";
+import sharp from "sharp";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
+import { writeFile, stat } from "node:fs/promises";
 
 const [, , htmlPath, outPath] = process.argv;
 const WIDTH = 1200;
 const HEIGHT = 630;
+const MAX_BYTES = 2 * 1024 * 1024;
 
 // This sandbox ships a pre-installed Chromium outside Playwright's normal
 // cache dir; use it when present, otherwise let Playwright resolve its own.
@@ -44,10 +48,34 @@ try {
   });
 
   const cover = page.locator(".cover");
-  await cover.screenshot({ path: outPath });
+  const raw = await cover.screenshot();
+
+  // Compress the PNG and keep it under MAX_BYTES, trying progressively
+  // more aggressive palette reduction if the default encode is too heavy.
+  const attempts = [
+    { compressionLevel: 9 },
+    { compressionLevel: 9, palette: true, colors: 256 },
+    { compressionLevel: 9, palette: true, colors: 128, dither: 0.8 },
+  ];
+
+  let optimized;
+  for (const options of attempts) {
+    optimized = await sharp(raw).png(options).toBuffer();
+    if (optimized.length <= MAX_BYTES) break;
+  }
+
+  if (optimized.length > MAX_BYTES) {
+    throw new Error(
+      `cover.png is ${(optimized.length / 1024 / 1024).toFixed(2)}MB after optimization, ` +
+        `over the ${MAX_BYTES / 1024 / 1024}MB limit`,
+    );
+  }
+
+  await writeFile(outPath, optimized);
 } finally {
   await browser.close();
 }
 
-console.log(`Wrote ${outPath}`);
+const { size } = await stat(outPath);
+console.log(`Wrote ${outPath} (${(size / 1024).toFixed(1)} KB)`);
 EOF
