@@ -284,6 +284,38 @@ database {
         <pre
           class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly lint --rules rules.json file.donly
 bunx donly lint --rules rules.json -o json file.donly</code></pre>
+        <p class="text-sm text-muted-foreground">
+          Por ejemplo, con un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >rules.json</code
+          > que exige que <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground">port</code
+          > sea numérico:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`{
+  "rules": [
+    { "directive": "port", "require": "number" }
+  ]
+}`}</code></pre>
+        <p class="text-sm text-muted-foreground">
+          Al lintear un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >file.donly</code
+          > que rompe esa regla:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`name "my-app"
+port "8080"`}</code></pre>
+        <p class="text-sm text-muted-foreground">
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >bunx donly lint --rules rules.json file.donly</code
+          > imprime:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`✖ file.donly:2:6  port expects a number, got string  (port-must-be-number)
+
+1 problem (1 error, 0 warnings)`}</code></pre>
       </div>
     </section>
 
