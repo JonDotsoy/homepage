@@ -23,6 +23,7 @@ Jonathan is a software developer with experience in fintech, working with TypeSc
 
 - [Homepage](${SITE}/): Full portfolio in Spanish
 - [Homepage (English)](${SITE}/en/): Full portfolio in English
+- [donly](${SITE}/donly): Quick guide to install and use donly, the DON (Directive Object Notation) parser
 `;
 
 export const GET: APIRoute = () => {

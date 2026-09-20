@@ -1,0 +1,650 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import {
+  Package,
+  Terminal,
+  Code2,
+  Puzzle,
+  ExternalLink,
+  Copy,
+  ChevronDown,
+} from "lucide-react";
+import { getImage } from "astro:assets";
+import CoverPng from "@/assets/donly/cover/cover.png";
+import { highlightDon, highlightJson, highlightJs } from "@/lib/highlight-code";
+import pageMarkdown from "@/components/pages/donly.md?raw";
+import BlogHeader from "@/components/blog-header.astro";
+import Footer from "@/sections/footer.astro";
+
+const optimizedCover = await getImage({
+  src: CoverPng,
+  width: 1200,
+  height: 630,
+  format: "webp",
+});
+const coverImageUrl = new URL(
+  optimizedCover.src,
+  Astro.site || Astro.url.origin,
+).href;
+
+const routeExampleHtml = await highlightDon(`route GET /api {
+  respond 200 "Ok"
+}`);
+const inspectInputHtml = await highlightDon(`name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}`);
+const lintInputHtml = await highlightDon(`name "my-app"
+port "8080"`);
+
+const dataTypesHtml = await highlightDon(`name "donly"
+port 8080
+price 19.99
+retries -1
+big 9007199254740993n
+mask 0xFF
+enabled true
+disabled false
+description null`);
+const commentsHtml = await highlightDon(`# Puerto donde escucha el servidor HTTP
+port 8080
+
+/*
+  Bloque de comentario
+  de varias líneas
+*/
+host "localhost"`);
+const heredocHtml = await highlightDon(`description <<<TEXT
+  Este es un bloque de texto
+  que puede ocupar varias líneas,
+  siempre que estén indentadas.
+name "my-app"`);
+const nestingHtml = await highlightDon(`server {
+  route GET /health {
+    respond 200 "Ok"
+  }
+  route POST /users {
+    respond 201 "Created"
+  }
+}`);
+
+const parseUsageHtml = await highlightJs(`import { DON } from "donly";
+
+const text = \`
+name "my-app"
+port 8080
+database {
+  host "localhost"
+  port 5432
+}
+\`;
+
+const root = DON.parse(text);`);
+const jsonCodecUsageHtml = await highlightJs(
+  `import { DirectiveJSONEncoder, DirectiveJSONDecoder } from "donly/decoder";
+
+const encoded = DirectiveJSONEncoder.encode(root);
+const decoded = new DirectiveJSONDecoder().decode(encoded);`,
+);
+const inspectOutputHtml = await highlightJson(`{
+  "name": "my-app",
+  "port": 8080,
+  "database": {
+    "host": "localhost",
+    "port": 5432
+  }
+}`);
+const lintRulesHtml = await highlightJson(`{
+  "/port": {
+    "[1]": {
+      "type": "number",
+      "message": "port debe ser un número"
+    }
+  }
+}`);
+
+const npmUrl = "https://www.npmjs.com/package/donly";
+const vscodeUrl =
+  "https://marketplace.visualstudio.com/items?itemName=jondotsoy.don-textmate";
+const githubUrl = "https://github.com/JonDotsoy/don";
+const syntaxDocsUrl =
+  "https://github.com/JonDotsoy/don/blob/develop/docs/specs/v1/spec.md";
+const lintDocsUrl =
+  "https://github.com/JonDotsoy/don/blob/develop/docs/lint/rules.md";
+
+const title = "donly — Guía rápida de DON (Directive Object Notation)";
+const description =
+  "Guía rápida de donly: instala el parser de DON (Directive Object Notation), aprende su sintaxis, los comandos CLI y cómo resaltarla en tu editor.";
+const keywords =
+  "donly, DON, Directive Object Notation, don-textmate, parser, configuración, CLI, VS Code, TypeScript";
+const pageUrl = new URL("/donly", Astro.site || Astro.url.origin).href;
+const markdownUrl = "/donly.md";
+const absoluteMarkdownUrl = new URL(markdownUrl, Astro.site || Astro.url.origin)
+  .href;
+const claudePrompt = `Lee ${absoluteMarkdownUrl} para que pueda hacerte preguntas sobre esta página.`;
+const openInClaudeUrl = `https://claude.ai/new?q=${encodeURIComponent(claudePrompt)}`;
+const openInChatGptUrl = `https://chatgpt.com/?q=${encodeURIComponent(claudePrompt)}`;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  name: "donly",
+  description,
+  url: pageUrl,
+  codeRepository: githubUrl,
+  downloadUrl: npmUrl,
+  programmingLanguage: "TypeScript",
+  runtimePlatform: "Node.js",
+  applicationCategory: "DeveloperApplication",
+  author: {
+    "@type": "Person",
+    name: "Jonathan Delgado Zamorano",
+    url: "https://jon.soy",
+  },
+};
+---
+
+<DefaultLayout
+  title={title}
+  description={description}
+  keywords={keywords}
+  lang="es"
+>
+  <Fragment slot="head">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={coverImageUrl} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={pageUrl} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={coverImageUrl} />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={pageUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
+  </Fragment>
+
+  <BlogHeader />
+
+  <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
+    <header class="flex flex-col gap-4">
+      <div class="flex items-center justify-between gap-4">
+        <span
+          class="inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground"
+        >
+          Guía rápida
+        </span>
+        <div
+          class="inline-flex items-center rounded-md border border-border bg-muted"
+        >
+          <button
+            id="copy-page-button"
+            type="button"
+            data-copy-label="Copiar página"
+            data-copied-label="¡Copiado!"
+            class="inline-flex items-center gap-1.5 rounded-l-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Copy className="size-4" />
+            <span>Copiar página</span>
+          </button>
+          <details class="relative">
+            <summary
+              class="inline-flex list-none items-center rounded-r-md border-l border-border px-2 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&::-webkit-details-marker]:hidden"
+              aria-label="Más opciones de la página"
+            >
+              <ChevronDown className="size-4" />
+            </summary>
+            <div
+              class="absolute right-0 z-10 mt-2 flex w-56 flex-col overflow-hidden rounded-md border border-border bg-card py-1 text-sm shadow-md"
+            >
+              <a
+                href={markdownUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <svg
+                  class="size-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <title>Markdown</title>
+                  <path
+                    d="M22.27 19.385H1.73A1.73 1.73 0 010 17.655V6.345a1.73 1.73 0 011.73-1.73h20.54A1.73 1.73 0 0124 6.345v11.308a1.73 1.73 0 01-1.73 1.731zM5.769 15.923v-4.5l2.308 2.885 2.307-2.885v4.5h2.308V8.078h-2.308l-2.307 2.885-2.308-2.885H3.46v7.847zM21.232 12h-2.309V8.077h-2.307V12h-2.308l3.461 4.039z"
+                  ></path>
+                </svg>
+                Ver como Markdown
+              </a>
+              <a
+                href={openInClaudeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <svg
+                  class="size-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <title>Claude</title>
+                  <path
+                    d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"
+                  ></path>
+                </svg>
+                Abrir en Claude
+              </a>
+              <a
+                href={openInChatGptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-2 px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <svg
+                  class="size-4"
+                  viewBox="0 0 256 260"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <title>ChatGPT</title>
+                  <path
+                    d="M239.184 106.203a64.72 64.72 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.72 64.72 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.67 64.67 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.77 64.77 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483m-97.56 136.338a48.4 48.4 0 0 1-31.105-11.255l1.535-.87l51.67-29.825a8.6 8.6 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601M37.158 197.93a48.35 48.35 0 0 1-5.781-32.589l1.534.921l51.722 29.826a8.34 8.34 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803M23.549 85.38a48.5 48.5 0 0 1 25.58-21.333v61.39a8.29 8.29 0 0 0 4.195 7.316l62.874 36.272l-21.845 12.636a.82.82 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405zm179.466 41.695l-63.08-36.63L161.73 77.86a.82.82 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.54 8.54 0 0 0-4.4-7.213m21.742-32.69l-1.535-.922l-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.72.72 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391zM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87l-51.67 29.825a8.6 8.6 0 0 0-4.246 7.367zm11.868-25.58L128.067 97.3l28.188 16.218v32.434l-28.086 16.218l-28.188-16.218z"
+                  ></path>
+                </svg>
+                Abrir con ChatGPT
+              </a>
+            </div>
+          </details>
+        </div>
+      </div>
+      <h1 class="text-3xl font-semibold text-foreground sm:text-4xl">donly</h1>
+      <p class="text-base text-muted-foreground">
+        <span class="font-medium text-foreground">donly</span> es la implementación
+        de referencia de <span class="font-medium text-foreground"
+          >DON (Directive Object Notation)</span
+        >, un formato de serialización de datos legible por humanos basado en
+        directivas y subdirectivas. Ideal para archivos de configuración,
+        definiciones de infraestructura y datos estructurados.
+      </p>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a
+          href={npmUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Package className="size-4" />
+          npm: donly
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+        <a
+          href={vscodeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Puzzle className="size-4" />
+          Extensión de VS Code
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+        <a
+          href={githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <Code2 className="size-4" />
+          Código fuente
+          <ExternalLink className="size-3.5 opacity-60" />
+        </a>
+      </div>
+    </header>
+
+    <!-- Instalación -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Terminal className="size-5" />
+        Instalación
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Agrega <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >donly</code
+        > a tu proyecto con tu gestor de paquetes favorito.
+      </p>
+      <pre
+        class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>npm install donly
+# o
+bun add donly
+# o
+pnpm add donly</code></pre>
+    </section>
+
+    <!-- Uso básico -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Code2 className="size-5" />
+        Uso básico
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Importa <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >DON</code
+        > y parsea un texto en formato DON para obtener un árbol de directivas.
+      </p>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={parseUsageHtml}
+      />
+      <p class="text-sm text-muted-foreground">
+        También puedes serializar directivas a JSON y decodificarlas de vuelta:
+      </p>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={jsonCodecUsageHtml}
+      />
+    </section>
+
+    <!-- Sintaxis básica -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Code2 className="size-5" />
+        Sintaxis básica
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        DON organiza los datos en <span class="text-foreground font-medium"
+          >directivas</span
+        >: un nombre seguido de argumentos posicionales y, opcionalmente, un
+        bloque <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >{"{ }"}</code
+        > con subdirectivas anidadas.
+      </p>
+      <div
+        class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+        set:html={routeExampleHtml}
+      />
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Tipos de datos:</span>
+          strings, números (enteros, decimales, hex, bigint), booleanos y
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >null</code
+          >.
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={dataTypesHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Comentarios:</span> de línea
+          con <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >#</code
+          > y de bloque con <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"/* ... */"}</code
+          >.
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={commentsHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Heredocs:</span> bloques de contenido
+          multilínea embebido que empiezan con <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"<<<DELIMITADOR"}</code
+          > y terminan en la primera línea sin indentar; no se cierran repitiendo
+          el delimitador.
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={heredocHtml}
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <p class="text-sm text-muted-foreground">
+          <span class="font-medium text-foreground">Anidamiento:</span> las directivas
+          pueden anidarse a cualquier profundidad dentro de bloques
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >{"{ }"}</code
+          >.
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={nestingHtml}
+        />
+      </div>
+    </section>
+
+    <!-- CLI -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Terminal className="size-5" />
+        CLI
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        El CLI de <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >donly</code
+        > permite inspeccionar y validar archivos <code
+          class="rounded bg-muted px-1.5 py-0.5 text-foreground">.donly</code
+        >.
+      </p>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">
+          Inspeccionar
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly inspect file.donly
+bunx donly inspect --strategy nested|tuple|raw file.donly</code></pre>
+        <p class="text-sm text-muted-foreground">
+          Por ejemplo, para un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >file.donly</code
+          > con:
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={inspectInputHtml}
+        />
+        <p class="text-sm text-muted-foreground">
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >bunx donly inspect file.donly</code
+          > imprime:
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={inspectOutputHtml}
+        />
+      </div>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">Lint</p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>bunx donly lint --rules rules.json file.donly
+bunx donly lint --rules rules.json -o json file.donly</code></pre>
+        <p class="text-sm text-muted-foreground">
+          Por ejemplo, con un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >rules.json</code
+          > que exige que <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground">port</code
+          > sea numérico:
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={lintRulesHtml}
+        />
+        <p class="text-sm text-muted-foreground">
+          Al lintear un <code
+            class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >file.donly</code
+          > que rompe esa regla:
+        </p>
+        <div
+          class="don-code overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm"
+          set:html={lintInputHtml}
+        />
+        <p class="text-sm text-muted-foreground">
+          <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+            >bunx donly lint --rules rules.json file.donly</code
+          > imprime:
+        </p>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>{`file.donly
+  2:6  error  port debe ser un número
+
+1 error 0 warnings 0 info`}</code></pre>
+      </div>
+    </section>
+
+    <!-- Editor -->
+    <section class="flex flex-col gap-4">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <Puzzle className="size-5" />
+        Instalar en tu editor
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        La extensión <span class="font-medium text-foreground"
+          >DON TextMate Grammar</span
+        > agrega resaltado de sintaxis para archivos <code
+          class="rounded bg-muted px-1.5 py-0.5 text-foreground">.don</code
+        > y <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+          >.donly</code
+        >. Funciona en VS Code, Kiro, o cualquier editor que soporte gramáticas
+        TextMate.
+      </p>
+      <div class="flex flex-col gap-2">
+        <p class="text-xs font-medium text-muted-foreground uppercase">
+          Desde VS Code
+        </p>
+        <ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+          <li>
+            Abre <span class="font-medium text-foreground">Quick Open</span> con
+            <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+              >Ctrl+P</code
+            > (o <code class="rounded bg-muted px-1.5 py-0.5 text-foreground"
+              >Cmd+P</code
+            > en macOS).
+          </li>
+          <li>Pega el siguiente comando y presiona Enter:</li>
+        </ol>
+        <pre
+          class="overflow-x-auto rounded-md border border-border bg-muted/50 p-4 text-sm text-foreground"><code>ext install jondotsoy.don-textmate</code></pre>
+        <p class="text-sm text-muted-foreground">
+          También puedes buscar <span class="font-medium text-foreground"
+            >"DON TextMate"</span
+          > en el Marketplace de extensiones o instalarla directamente desde
+          <a
+            href={vscodeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+            >la página de la extensión</a
+          >.
+        </p>
+      </div>
+    </section>
+
+    <div class="border-t border-border pt-8">
+      <p class="text-sm text-muted-foreground">
+        Más detalles, el sistema de plugins y la referencia completa en el
+        <a
+          href={githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >repositorio de GitHub</a
+        >, incluyendo la
+        <a
+          href={syntaxDocsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >especificación completa de la sintaxis</a
+        >
+        y la
+        <a
+          href={lintDocsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-foreground underline underline-offset-4 hover:text-muted-foreground"
+          >documentación completa del formato de reglas de lint</a
+        >.
+      </p>
+    </div>
+
+    <div id="page-markdown-source" class="hidden" set:text={pageMarkdown} />
+  </main>
+
+  <Footer lang="es" />
+</DefaultLayout>
+
+<script>
+  const button = document.getElementById(
+    "copy-page-button",
+  ) as HTMLButtonElement | null;
+  const label = button?.querySelector("span");
+  const markdownSource = document.getElementById("page-markdown-source");
+
+  button?.addEventListener("click", async () => {
+    if (!label || !markdownSource) return;
+    try {
+      await navigator.clipboard.writeText(markdownSource.textContent ?? "");
+      const original = label.textContent;
+      label.textContent = button.dataset.copiedLabel ?? original;
+      setTimeout(() => {
+        label.textContent = original;
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to copy page as markdown", error);
+    }
+  });
+
+  const pageMenu = document.querySelector("header details");
+  document.addEventListener("click", (event) => {
+    if (
+      pageMenu instanceof HTMLDetailsElement &&
+      pageMenu.open &&
+      !pageMenu.contains(event.target as Node)
+    ) {
+      pageMenu.open = false;
+    }
+  });
+  pageMenu?.addEventListener("click", (event) => {
+    if (
+      pageMenu instanceof HTMLDetailsElement &&
+      (event.target as HTMLElement).closest("a")
+    ) {
+      pageMenu.open = false;
+    }
+  });
+</script>
+
+<style>
+  /* Let the wrapper's bg-muted/50 show through Shiki's own background. */
+  .don-code :global(pre.shiki) {
+    margin: 0;
+    background-color: transparent !important;
+  }
+</style>
