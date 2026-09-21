@@ -6,9 +6,11 @@ import {
   IconLanguage,
   IconArticle,
   IconCode,
+  IconCalculator,
 } from "@tabler/icons-react";
 import data from "@/data/general.json";
 import { dictionary } from "@/dictionaries";
+import NewLabel from "@/components/ui/NewLabel.tsx";
 
 interface Props {
   lang?: "es" | "en";
@@ -44,6 +46,16 @@ const languageUrl = lang === "es" ? "/en" : "/";
         >
           <IconCode className="h-4 w-4" />
           <span class="font-medium">donly</span>
+        </a>
+
+        <a
+          href="/tools/cartera-en-dias"
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          aria-label="¿Cuántos días te quedan?"
+        >
+          <IconCalculator className="h-4 w-4" />
+          <span class="font-medium">¿Cuántos días te quedan?</span>
+          <NewLabel releaseDate="2026-09-21" expirationDays={30} />
         </a>
 
         <a

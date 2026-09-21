@@ -1,0 +1,35 @@
+---
+import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import CodeBlock from "@/components/tools/CodeBlock.astro";
+import NewLabelPlayground from "@/components/tools/NewLabelPlayground.tsx";
+import NewLabelPlaygroundSource from "@/components/tools/NewLabelPlayground.tsx?raw";
+import NewLabelSource from "@/components/ui/NewLabel.tsx?raw";
+---
+
+<DefaultLayout
+  title="NewLabel — Test UI"
+  description="Playground interno para probar el componente NewLabel con distintas propiedades."
+  lang="es"
+>
+  <Fragment slot="head">
+    <meta name="robots" content="noindex, nofollow" />
+  </Fragment>
+
+  <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-16">
+    <div class="flex flex-col gap-2">
+      <h1 class="text-2xl font-semibold text-foreground">NewLabel</h1>
+      <p class="text-sm text-muted-foreground">
+        Configura las propiedades del componente <code>NewLabel</code> y observa
+        el resultado en vivo.
+      </p>
+    </div>
+
+    <NewLabelPlayground client:only="react" />
+
+    <CodeBlock title="Código fuente — NewLabel.tsx" code={NewLabelSource} />
+    <CodeBlock
+      title="Código fuente — NewLabelPlayground.tsx"
+      code={NewLabelPlaygroundSource}
+    />
+  </main>
+</DefaultLayout>
