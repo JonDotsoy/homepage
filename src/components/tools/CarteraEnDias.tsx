@@ -211,8 +211,8 @@ export default function CarteraEnDias() {
   const [hydrated, setHydrated] = React.useState(false);
   const [shareUrl, setShareUrl] = React.useState("");
   const [shareStatus, setShareStatus] = React.useState("");
-  const [shareOpen, setShareOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const [jsonCopied, setJsonCopied] = React.useState(false);
 
   React.useEffect(() => {
     let next = loadState();
@@ -221,8 +221,8 @@ export default function CarteraEnDias() {
       const d = params.get("d");
       if (d) {
         next = normalizeState(decodeState(d));
+        setShareUrl(window.location.href);
         setShareStatus("Valores cargados desde un enlace compartido.");
-        setShareOpen(true);
       }
     } catch {
       // ignore malformed share payloads
@@ -247,7 +247,6 @@ export default function CarteraEnDias() {
   const months = days / 30;
   const years = days / 365;
   const monthlyBalance = (state.income ?? 0) - totalMonthly;
-  const gaugePct = Math.min(100, (days / 90) * 100);
 
   let statusLabel: string;
   let statusTone: "good" | "warning" | "danger";
@@ -317,14 +316,12 @@ export default function CarteraEnDias() {
       url.searchParams.set("d", encoded);
       window.history.replaceState(null, "", url.toString());
       setShareUrl(url.toString());
-      setShareOpen(true);
       const ok = await copyToClipboard(url.toString());
       setShareStatus(
         ok ? "Enlace copiado al portapapeles." : "Copia el enlace manualmente.",
       );
     } catch {
       setShareStatus("No se pudo generar el enlace en este navegador.");
-      setShareOpen(true);
     }
   }
 
@@ -339,7 +336,6 @@ export default function CarteraEnDias() {
     const next = clone(defaultState);
     setState(next);
     saveState(next);
-    setShareOpen(false);
     setShareUrl("");
     setShareStatus("");
     try {
@@ -378,15 +374,6 @@ export default function CarteraEnDias() {
             {statusLabel}
           </span>
         </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all",
-              gaugeToneClasses[statusTone],
-            )}
-            style={{ width: `${gaugePct}%` }}
-          />
-        </div>
       </div>
 
       <div className="flex gap-2">
@@ -409,7 +396,7 @@ export default function CarteraEnDias() {
         </button>
       </div>
 
-      {shareOpen && (
+      {shareUrl && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <input
@@ -595,6 +582,36 @@ export default function CarteraEnDias() {
           </div>
         </div>
       </div>
+
+      <details className="group rounded-md border border-border p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span>Datos en memoria (JSON)</span>
+          <span className="text-muted-foreground transition-transform group-open:rotate-180">
+            ▾
+          </span>
+        </summary>
+        <div className="mt-3 flex flex-col gap-2">
+          <pre className="max-h-72 overflow-auto rounded-md bg-muted p-3 font-mono text-xs text-foreground">
+            {JSON.stringify(state, null, 2)}
+          </pre>
+          <button
+            type="button"
+            onClick={async () => {
+              const ok = await copyToClipboard(JSON.stringify(state, null, 2));
+              setJsonCopied(ok);
+              if (ok) setTimeout(() => setJsonCopied(false), 1500);
+            }}
+            className="flex items-center justify-center gap-1.5 self-start rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-accent"
+          >
+            {jsonCopied ? (
+              <Check className="size-3.5" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+            {jsonCopied ? "Copiado" : "Copiar JSON"}
+          </button>
+        </div>
+      </details>
 
       <p className="text-center text-xs text-muted-foreground">
         Tus valores se guardan solo en este dispositivo.
