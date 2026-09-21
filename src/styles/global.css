@@ -138,6 +138,42 @@
   }
 }
 
+.new-label-wave {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.new-label-wave::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, currentColor 45%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: new-label-wave 2.4s ease-in-out infinite;
+}
+
+@keyframes new-label-wave {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-label-wave::after {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
