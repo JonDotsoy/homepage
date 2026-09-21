@@ -2,13 +2,89 @@
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import CarteraEnDias from "@/components/tools/CarteraEnDias.tsx";
 import { ArrowLeft } from "lucide-react";
+import { getImage } from "astro:assets";
+import CoverPng from "@/assets/cartera-en-dias/cover/cover.png";
+
+const optimizedCover = await getImage({
+  src: CoverPng,
+  width: 1200,
+  height: 630,
+  format: "webp",
+});
+const coverImageUrl = new URL(
+  optimizedCover.src,
+  Astro.site || Astro.url.origin,
+).href;
+
+const title = "¿Cuántos días te quedan? — Herramientas";
+const description =
+  "Herramienta client-only que calcula, en días, cuánto te alcanza tu saldo actual para vivir con la misma calidad de vida según tus gastos mensuales.";
+const ogDescription =
+  "Cuánto te alcanza tu saldo actual, medido en días de reserva, según tus gastos mensuales fijos.";
+const siteName = "jon.soy";
+const keywords =
+  "cuántos días te quedan, cartera en días, días de reserva, gastos mensuales, saldo, finanzas personales, runway financiero, calculadora, client-only";
+const pageUrl = new URL(
+  "/tools/cartera-en-dias",
+  Astro.site || Astro.url.origin,
+).href;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "¿Cuántos días te quedan?",
+  description,
+  url: pageUrl,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Any (web browser)",
+  isAccessibleForFree: true,
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Person",
+    name: "Jonathan Delgado Zamorano",
+    url: "https://jon.soy",
+  },
+};
 ---
 
 <DefaultLayout
-  title="¿Cuántos días te quedan? — Herramientas"
-  description="Herramienta client-only que representa, en días, cuánto te alcanzan tus recursos actuales para seguir viviendo con la misma calidad de vida según tus gastos mensuales."
+  title={title}
+  description={description}
+  keywords={keywords}
   lang="es"
 >
+  <Fragment slot="head">
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={ogDescription} />
+    <meta property="og:image" content={coverImageUrl} />
+    <meta property="og:locale" content="es_CL" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={pageUrl} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={ogDescription} />
+    <meta name="twitter:image" content={coverImageUrl} />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href={pageUrl} />
+
+    <!-- JSON-LD Structured Data -->
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(jsonLd)}
+    />
+  </Fragment>
+
   <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-16">
     <header>
       <a
