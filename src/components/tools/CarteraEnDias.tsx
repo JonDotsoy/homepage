@@ -140,6 +140,13 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function formatThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/** Max safe amount, in digits, before it stops making sense as a CLP figure. */
+const MAX_AMOUNT_DIGITS = 15;
+
 function AmountInput({
   id,
   value,
@@ -153,6 +160,24 @@ function AmountInput({
   placeholder?: string;
   className?: string;
 }) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const display =
+    value === null || value === undefined
+      ? ""
+      : formatThousands(String(Math.trunc(value)));
+
+  // Reformatting changes the string length, so the browser's default
+  // cursor-preserving behavior lands in the wrong spot. Snapping to the
+  // end matches how amount inputs are typed (append digits, backspace
+  // from the right) and avoids fighting the reflow on every keystroke.
+  React.useEffect(() => {
+    const el = inputRef.current;
+    if (el && document.activeElement === el) {
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+    }
+  }, [display]);
+
   return (
     <div
       className={cn(
@@ -162,16 +187,18 @@ function AmountInput({
     >
       <span className="text-sm font-medium text-muted-foreground">$</span>
       <input
+        ref={inputRef}
         id={id}
-        type="number"
-        inputMode="decimal"
-        min={0}
-        step={1}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
         placeholder={placeholder ?? "0"}
-        value={value === null || value === undefined ? "" : value}
+        value={display}
         onChange={(e) => {
-          const v = parseFloat(e.target.value);
-          onChange(isNaN(v) ? null : v);
+          const digits = e.target.value
+            .replace(/\D/g, "")
+            .slice(0, MAX_AMOUNT_DIGITS);
+          onChange(digits ? parseInt(digits, 10) : null);
         }}
         className="w-full min-w-0 bg-transparent font-mono text-sm font-medium tabular-nums text-foreground outline-none placeholder:text-muted-foreground/60"
       />
