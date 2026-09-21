@@ -1,7 +1,9 @@
 ---
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
+import CodeBlock from "@/components/tools/CodeBlock.astro";
 import NewLabelPlayground from "@/components/tools/NewLabelPlayground.tsx";
 import NewLabelPlaygroundSource from "@/components/tools/NewLabelPlayground.tsx?raw";
+import NewLabelSource from "@/components/ui/NewLabel.tsx?raw";
 ---
 
 <DefaultLayout
@@ -24,14 +26,10 @@ import NewLabelPlaygroundSource from "@/components/tools/NewLabelPlayground.tsx?
 
     <NewLabelPlayground client:only="react" />
 
-    <div class="flex flex-col gap-2">
-      <h2
-        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-      >
-        Código fuente — NewLabelPlayground.tsx
-      </h2>
-      <pre
-        class="max-h-[32rem] overflow-auto rounded-md border border-border bg-muted p-4 text-xs text-foreground"><code>{NewLabelPlaygroundSource}</code></pre>
-    </div>
+    <CodeBlock title="Código fuente — NewLabel.tsx" code={NewLabelSource} />
+    <CodeBlock
+      title="Código fuente — NewLabelPlayground.tsx"
+      code={NewLabelPlaygroundSource}
+    />
   </main>
 </DefaultLayout>
