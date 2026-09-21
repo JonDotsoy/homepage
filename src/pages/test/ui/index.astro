@@ -1,6 +1,7 @@
 ---
 import DefaultLayout from "@/components/layouts/DefaultLayout.astro";
 import NewLabelPlayground from "@/components/tools/NewLabelPlayground.tsx";
+import NewLabelPlaygroundSource from "@/components/tools/NewLabelPlayground.tsx?raw";
 ---
 
 <DefaultLayout
@@ -22,5 +23,15 @@ import NewLabelPlayground from "@/components/tools/NewLabelPlayground.tsx";
     </div>
 
     <NewLabelPlayground client:only="react" />
+
+    <div class="flex flex-col gap-2">
+      <h2
+        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+      >
+        Código fuente — NewLabelPlayground.tsx
+      </h2>
+      <pre
+        class="max-h-[32rem] overflow-auto rounded-md border border-border bg-muted p-4 text-xs text-foreground"><code>{NewLabelPlaygroundSource}</code></pre>
+    </div>
   </main>
 </DefaultLayout>
