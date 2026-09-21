@@ -37,7 +37,13 @@ function resolveSite() {
 // https://astro.build/config
 export default defineConfig({
   site: resolveSite(),
-  integrations: [react(), mdx(), sitemap()],
+  integrations: [
+    react(),
+    mdx(),
+    sitemap({
+      filter: (page) => !new URL(page).pathname.startsWith("/test/"),
+    }),
+  ],
 
   vite: {
     plugins: [tailwindcss()],
