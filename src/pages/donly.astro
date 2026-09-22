@@ -7,6 +7,7 @@ import {
   Puzzle,
   ExternalLink,
   Copy,
+  Check,
   ChevronDown,
   Star,
 } from "lucide-react";
@@ -342,17 +343,28 @@ const jsonLd = {
                 >$</span
               >
               <span class="pr-3 py-2 text-foreground">npm install donly</span>
-              <button
-                id="copy-install-button"
-                type="button"
-                data-copy-text="npm install donly"
-                data-copy-label="Copiar"
-                data-copied-label="¡Copiado!"
-                aria-label="Copiar comando de instalación"
-                class="inline-flex items-center gap-1.5 self-stretch rounded-r-md border-l border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Copy className="size-3.5" />
-              </button>
+              <div class="relative flex self-stretch">
+                <span
+                  id="copy-install-tooltip"
+                  role="status"
+                  aria-live="polite"
+                  class="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-xs whitespace-nowrap text-background opacity-0 transition-opacity duration-150"
+                  >¡Copiado!</span
+                >
+                <button
+                  id="copy-install-button"
+                  type="button"
+                  data-copy-text="npm install donly"
+                  aria-label="Copiar comando de instalación"
+                  class="inline-flex items-center gap-1.5 self-stretch rounded-r-md border-l border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Copy id="copy-install-icon" className="size-3.5" />
+                  <Check
+                    id="copy-install-check-icon"
+                    className="hidden size-3.5 text-emerald-500"
+                  />
+                </button>
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-3">
@@ -806,23 +818,29 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
   const installButton = document.getElementById(
     "copy-install-button",
   ) as HTMLButtonElement | null;
+  const installTooltip = document.getElementById("copy-install-tooltip");
+  const installCopyIcon = document.getElementById("copy-install-icon");
+  const installCheckIcon = document.getElementById("copy-install-check-icon");
+  let installCopyTimeout: ReturnType<typeof setTimeout> | undefined;
 
   installButton?.addEventListener("click", async () => {
     const text = installButton.dataset.copyText;
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      installButton.setAttribute(
-        "aria-label",
-        installButton.dataset.copiedLabel ?? "Copiado",
-      );
-      installButton.classList.add("text-foreground");
-      setTimeout(() => {
+      clearTimeout(installCopyTimeout);
+      installButton.setAttribute("aria-label", "¡Comando copiado!");
+      installTooltip?.classList.add("opacity-100");
+      installCopyIcon?.classList.add("hidden");
+      installCheckIcon?.classList.remove("hidden");
+      installCopyTimeout = setTimeout(() => {
         installButton.setAttribute(
           "aria-label",
           "Copiar comando de instalación",
         );
-        installButton.classList.remove("text-foreground");
+        installTooltip?.classList.remove("opacity-100");
+        installCopyIcon?.classList.remove("hidden");
+        installCheckIcon?.classList.add("hidden");
       }, 1500);
     } catch (error) {
       console.error("Failed to copy install command", error);
