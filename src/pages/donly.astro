@@ -201,8 +201,8 @@ const jsonLd = {
 
   <BlogHeader />
 
-  <main class="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16">
-    <header class="flex flex-col gap-4">
+  <main class="mx-auto flex max-w-5xl flex-col gap-16 px-4 py-16">
+    <header class="flex flex-col gap-10">
       <div class="flex items-center justify-between gap-4">
         <span
           class="inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground"
@@ -293,63 +293,134 @@ const jsonLd = {
           </details>
         </div>
       </div>
-      <h1 class="flex items-center">
-        <span class="sr-only">donly</span>
-        <Image
-          src={BrandLogoLight}
-          alt="donly"
-          class="block h-10 w-auto dark:hidden sm:h-12"
-          width={369}
-          height={113}
-        />
-        <Image
-          src={BrandLogoDark}
-          alt="donly"
-          class="hidden h-10 w-auto dark:block sm:h-12"
-          width={369}
-          height={113}
-        />
-      </h1>
-      <p class="text-base text-muted-foreground">
-        <span class="font-medium text-foreground">donly</span> es la implementación
-        de referencia de <span class="font-medium text-foreground"
-          >DON (Directive Object Notation)</span
-        >, un formato de serialización de datos legible por humanos basado en
-        directivas y subdirectivas. Ideal para archivos de configuración,
-        definiciones de infraestructura y datos estructurados.
-      </p>
+      <div class="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div class="flex flex-col gap-6">
+          <h1 class="flex items-center">
+            <span class="sr-only">donly</span>
+            <Image
+              src={BrandLogoLight}
+              alt="donly"
+              class="block h-10 w-auto dark:hidden sm:h-12"
+              width={369}
+              height={113}
+            />
+            <Image
+              src={BrandLogoDark}
+              alt="donly"
+              class="hidden h-10 w-auto dark:block sm:h-12"
+              width={369}
+              height={113}
+            />
+          </h1>
+          <p class="text-base text-muted-foreground">
+            <span class="font-medium text-foreground">donly</span> es la implementación
+            de referencia de <span class="font-medium text-foreground"
+              >DON (Directive Object Notation)</span
+            >, un formato de serialización de datos legible por humanos basado
+            en directivas y subdirectivas. Ideal para archivos de
+            configuración, definiciones de infraestructura y datos
+            estructurados.
+          </p>
 
-      <div class="flex flex-wrap gap-3 pt-2">
-        <a
-          href={npmUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          <div class="flex flex-col gap-3 pt-2">
+            <div
+              class="inline-flex w-fit items-center rounded-md border border-border bg-muted/50 font-mono text-sm"
+            >
+              <span class="pointer-events-none px-3 py-2 text-muted-foreground"
+                >$</span
+              >
+              <span class="pr-3 py-2 text-foreground">npm install donly</span>
+              <button
+                id="copy-install-button"
+                type="button"
+                data-copy-text="npm install donly"
+                data-copy-label="Copiar"
+                data-copied-label="¡Copiado!"
+                aria-label="Copiar comando de instalación"
+                class="inline-flex items-center gap-1.5 self-stretch rounded-r-md border-l border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Copy className="size-3.5" />
+              </button>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <a
+                href={npmUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:opacity-90"
+              >
+                <Package className="size-4" />
+                Ver en npm
+                <ExternalLink className="size-3.5 opacity-80" />
+              </a>
+              <a
+                href={vscodeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Puzzle className="size-4" />
+                Extensión de VS Code
+                <ExternalLink className="size-3.5 opacity-60" />
+              </a>
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Code2 className="size-4" />
+                Código fuente
+                <ExternalLink className="size-3.5 opacity-60" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
         >
-          <Package className="size-4" />
-          npm: donly
-          <ExternalLink className="size-3.5 opacity-60" />
-        </a>
-        <a
-          href={vscodeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <Puzzle className="size-4" />
-          Extensión de VS Code
-          <ExternalLink className="size-3.5 opacity-60" />
-        </a>
-        <a
-          href={githubUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <Code2 className="size-4" />
-          Código fuente
-          <ExternalLink className="size-3.5 opacity-60" />
-        </a>
+          <div
+            class="flex items-center gap-3 border-b border-border bg-muted/50 px-3 py-2.5"
+          >
+            <span class="flex gap-1.5" aria-hidden="true">
+              <span class="size-2.5 rounded-full bg-red-400/70"></span>
+              <span class="size-2.5 rounded-full bg-amber-400/70"></span>
+              <span class="size-2.5 rounded-full bg-emerald-400/70"></span>
+            </span>
+            <div class="flex items-center gap-1 text-xs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected="true"
+                data-hero-tab="don"
+                class="hero-tab-trigger rounded-md border border-transparent px-2.5 py-1 font-medium text-foreground transition-colors aria-selected:border-border aria-selected:bg-background"
+              >
+                config.donly
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-hero-tab="json"
+                class="hero-tab-trigger rounded-md border border-transparent px-2.5 py-1 text-muted-foreground transition-colors hover:text-foreground aria-selected:border-border aria-selected:bg-background aria-selected:text-foreground"
+              >
+                config.json
+              </button>
+            </div>
+          </div>
+          <div
+            class="don-code overflow-x-auto p-4 text-sm"
+            data-hero-panel="don"
+            set:html={inspectInputHtml}
+          />
+          <div
+            class="don-code hidden overflow-x-auto p-4 text-sm"
+            data-hero-panel="json"
+            set:html={inspectOutputHtml}
+          />
+        </div>
       </div>
     </header>
 
@@ -717,6 +788,51 @@ bunx donly lint --rules rules.json -o json file.donly</code></pre>
     } catch (error) {
       console.error("Failed to copy page as markdown", error);
     }
+  });
+
+  const installButton = document.getElementById(
+    "copy-install-button",
+  ) as HTMLButtonElement | null;
+
+  installButton?.addEventListener("click", async () => {
+    const text = installButton.dataset.copyText;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      installButton.setAttribute(
+        "aria-label",
+        installButton.dataset.copiedLabel ?? "Copiado",
+      );
+      installButton.classList.add("text-foreground");
+      setTimeout(() => {
+        installButton.setAttribute(
+          "aria-label",
+          "Copiar comando de instalación",
+        );
+        installButton.classList.remove("text-foreground");
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to copy install command", error);
+    }
+  });
+
+  const heroTabTriggers = document.querySelectorAll<HTMLButtonElement>(
+    "[data-hero-tab]",
+  );
+  const heroPanels = document.querySelectorAll<HTMLElement>(
+    "[data-hero-panel]",
+  );
+
+  heroTabTriggers.forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const target = trigger.dataset.heroTab;
+      heroTabTriggers.forEach((t) =>
+        t.setAttribute("aria-selected", String(t === trigger)),
+      );
+      heroPanels.forEach((panel) => {
+        panel.classList.toggle("hidden", panel.dataset.heroPanel !== target);
+      });
+    });
   });
 
   const pageMenu = document.querySelector("header details");
