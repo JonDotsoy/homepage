@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>linkedin bg</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1584px;
+        height: 396px;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        background: radial-gradient(
+            circle at 12% 20%,
+            rgba(124, 58, 237, 0.32),
+            transparent 42%
+          ),
+          radial-gradient(
+            circle at 90% 90%,
+            rgba(16, 185, 129, 0.24),
+            transparent 50%
+          ),
+          linear-gradient(135deg, #0b0f19 0%, #12172a 100%);
+        font-family: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono",
+          monospace;
+      }
+
+      /*
+        LinkedIn overlays the profile photo on the bottom-left of the
+        banner (~300px circle), so keep the terminal card clear of that
+        corner by anchoring it to the right half.
+      */
+      .terminal {
+        margin-right: 90px;
+        width: 720px;
+        border-radius: 14px;
+        background: #14161f;
+        box-shadow:
+          0 30px 60px -20px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+
+      .titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: #1d2030;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+
+      .dot.red {
+        background: #ff5f56;
+      }
+      .dot.yellow {
+        background: #ffbd2e;
+      }
+      .dot.green {
+        background: #27c93f;
+      }
+
+      .titlebar span.name {
+        margin-left: 10px;
+        color: #8a8fa3;
+        font-size: 13px;
+      }
+
+      .body {
+        padding: 22px 28px 26px;
+        font-size: 17px;
+        line-height: 1.7;
+        color: #d5d8e6;
+      }
+
+      .prompt {
+        color: #27c93f;
+      }
+
+      .path {
+        color: #61dafb;
+      }
+
+      .comment {
+        color: #6b7280;
+      }
+
+      .fn {
+        color: #82aaff;
+      }
+
+      .str {
+        color: #c3e88d;
+      }
+
+      .punct {
+        color: #89ddff;
+      }
+
+      .output {
+        color: #ffcb6b;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 9px;
+        height: 18px;
+        background: #d5d8e6;
+        vertical-align: -3px;
+        animation: blink 1s step-start infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="terminal">
+      <div class="titlebar">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+        <span class="name">hello-world.js — zsh</span>
+      </div>
+      <div class="body">
+        <div>
+          <span class="prompt">➜</span>
+          <span class="path">~/hello-world</span>
+          <span class="punct">node hello-world.js</span>
+        </div>
+        <div>&nbsp;</div>
+        <div>
+          <span class="comment">// hello-world.js</span>
+        </div>
+        <div>
+          <span class="fn">console</span><span class="punct">.</span><span
+            class="fn"
+            >log</span
+          ><span class="punct">(</span><span class="str"
+            >"Hello, world!"</span
+          ><span class="punct">);</span>
+        </div>
+        <div>&nbsp;</div>
+        <div><span class="output">Hello, world!</span></div>
+        <div>
+          <span class="prompt">➜</span>
+          <span class="path">~/hello-world</span>
+          <span class="cursor"></span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
