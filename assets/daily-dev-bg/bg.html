@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>daily.dev bg</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1000px;
+        height: 500px;
+        overflow: hidden;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(
+            circle at 20% 15%,
+            rgba(124, 58, 237, 0.35),
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 85% 85%,
+            rgba(16, 185, 129, 0.28),
+            transparent 50%
+          ),
+          linear-gradient(135deg, #0b0f19 0%, #12172a 100%);
+        font-family: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono",
+          monospace;
+      }
+
+      .terminal {
+        width: 760px;
+        border-radius: 14px;
+        background: #14161f;
+        box-shadow:
+          0 30px 60px -20px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+
+      .titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: #1d2030;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+
+      .dot.red {
+        background: #ff5f56;
+      }
+      .dot.yellow {
+        background: #ffbd2e;
+      }
+      .dot.green {
+        background: #27c93f;
+      }
+
+      .titlebar span.name {
+        margin-left: 10px;
+        color: #8a8fa3;
+        font-size: 13px;
+      }
+
+      .body {
+        padding: 28px 30px 34px;
+        font-size: 19px;
+        line-height: 1.8;
+        color: #d5d8e6;
+      }
+
+      .prompt {
+        color: #27c93f;
+      }
+
+      .path {
+        color: #61dafb;
+      }
+
+      .comment {
+        color: #6b7280;
+      }
+
+      .keyword {
+        color: #c792ea;
+      }
+
+      .fn {
+        color: #82aaff;
+      }
+
+      .str {
+        color: #c3e88d;
+      }
+
+      .punct {
+        color: #89ddff;
+      }
+
+      .output {
+        color: #ffcb6b;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 10px;
+        height: 20px;
+        background: #d5d8e6;
+        vertical-align: -4px;
+        animation: blink 1s step-start infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="terminal">
+      <div class="titlebar">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+        <span class="name">hello-world.js — zsh</span>
+      </div>
+      <div class="body">
+        <div>
+          <span class="prompt">➜</span>
+          <span class="path">~/hello-world</span>
+          <span class="punct">node hello-world.js</span>
+        </div>
+        <div>&nbsp;</div>
+        <div>
+          <span class="comment">// hello-world.js</span>
+        </div>
+        <div>
+          <span class="fn">console</span><span class="punct">.</span><span
+            class="fn"
+            >log</span
+          ><span class="punct">(</span><span class="str"
+            >"Hello, world!"</span
+          ><span class="punct">);</span>
+        </div>
+        <div>&nbsp;</div>
+        <div><span class="output">Hello, world!</span></div>
+        <div>
+          <span class="prompt">➜</span>
+          <span class="path">~/hello-world</span>
+          <span class="cursor"></span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
